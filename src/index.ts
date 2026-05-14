@@ -16,6 +16,7 @@ import { ticketAddCommand } from './commands/ticket-add';
 import { ticketRemoveCommand } from './commands/ticket-remove';
 import { ticketRenameCommand } from './commands/ticket-rename';
 import { ticketClaimCommand } from './commands/ticket-claim';
+import { oldmanChannelCommand } from './commands/oldman-channel';
 
 // Select Menus
 import { ticketCategoryHandler } from './interactions/selectMenus/ticketCategory';
@@ -43,7 +44,7 @@ import { setupAddCategoryModal } from './interactions/modals/setupAddCategoryMod
 for (const cmd of [
   setupCommand, configCommand, doctorCommand,
   ticketCloseCommand, ticketAddCommand, ticketRemoveCommand,
-  ticketRenameCommand, ticketClaimCommand,
+  ticketRenameCommand, ticketClaimCommand, oldmanChannelCommand,
 ]) {
   commands.set(cmd.data.name, cmd);
 }
