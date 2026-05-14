@@ -2,6 +2,7 @@ import { SlashCommandBuilder, ChannelType, type ChatInputCommandInteraction } fr
 import type { Command } from '../types';
 import { isAdmin } from '../services/permissionService';
 import { getOldManChannel, setOldManChannel, disableOldManChannel } from '../db/index';
+import { replyError } from '../utils/errors';
 
 export const oldmanChannelCommand: Command = {
   data: new SlashCommandBuilder()
@@ -38,7 +39,7 @@ export const oldmanChannelCommand: Command = {
     if (sub === 'show') {
       const channelId = getOldManChannel(interaction.guildId);
       if (!channelId) {
-        await interaction.reply({ ephemeral: true, content: 'No Old Man channel configured for this server.' });
+        return replyError(interaction, 'No Old Man channel configured for this server.');
       } else {
         await interaction.reply({ ephemeral: true, content: `Old Man channel: <#${channelId}>` });
       }
@@ -46,8 +47,7 @@ export const oldmanChannelCommand: Command = {
     }
 
     if (!isAdmin(interaction.member)) {
-      await interaction.reply({ ephemeral: true, content: 'You need the Manage Server permission to use this command.' });
-      return;
+      return replyError(interaction, 'You need the Manage Server permission to use this command.');
     }
 
     if (sub === 'set') {
