@@ -135,6 +135,70 @@ Der Bot öffnet ein interaktives **Setup Center** als ephemeral Message (nur du 
 
 ---
 
+## Sector 13 Old Man Lore Bot
+
+A dedicated Discord channel hosts an in-universe SCUM character — "The Old Man of Sector 13". He responds to every message in that channel in character: dark, short, atmospheric. He never breaks character.
+
+### Enable the lore channel
+
+1. Copy the channel ID from Discord (right-click the channel → **Copy Channel ID**)
+2. Add it to your `.env`:
+
+```
+LORE_CHANNEL_ID=your_channel_id_here
+```
+
+3. Restart the bot.
+
+### Install Ollama (optional, for AI-generated replies)
+
+Ollama runs a local language model on your machine. Without it, the bot uses handcrafted fallback lines.
+
+1. Download and install Ollama from [ollama.com](https://ollama.com)
+2. Pull the model:
+
+```bash
+ollama pull llama3.1:8b
+```
+
+3. Start the Ollama server:
+
+```bash
+ollama serve
+```
+
+The bot connects to `http://localhost:11434/api/generate` by default. Override with:
+
+```
+OLLAMA_URL=http://your-host:11434/api/generate
+OLLAMA_MODEL=llama3.1:8b
+```
+
+### Fallback mode
+
+If Ollama is not running, times out, or returns an empty response, the bot automatically falls back to a pool of handcrafted in-character lines. The bot will still respond — just without AI generation. No configuration needed.
+
+### In-channel commands
+
+| Command | Effect |
+|---|---|
+| `/story` | The Old Man tells a fictional Sector 13 survival story |
+| `/wisdom` | One piece of short, dark survival wisdom |
+| `/rumor` | A dark, believable rumor from the SCUM world |
+| `/name` | Gives you a dark survivor nickname |
+
+Any other message receives an in-character reply.
+
+### `.env` reference
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `LORE_CHANNEL_ID` | Yes | — | Channel ID where the Old Man responds |
+| `OLLAMA_URL` | No | `http://localhost:11434/api/generate` | Ollama API endpoint |
+| `OLLAMA_MODEL` | No | `llama3.1:8b` | Ollama model name |
+
+---
+
 ## Troubleshooting
 
 ### „Das Ticket-System ist nicht konfiguriert"
