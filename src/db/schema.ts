@@ -61,3 +61,10 @@ export const CREATE_TICKET_CATEGORY_CONFIG_TABLE = `
     UNIQUE(guild_id, key)
   )
 `;
+
+export const CREATE_OLDMAN_CONFIG_TABLE = `
+  CREATE TABLE IF NOT EXISTS oldman_config (
+    guild_id   TEXT PRIMARY KEY,
+    channel_id TEXT NOT NULL
+  )
+`;

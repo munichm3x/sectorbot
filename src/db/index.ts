@@ -3,7 +3,8 @@ import { mkdirSync } from 'fs';
 import { dirname } from 'path';
 import {
   CREATE_TICKETS_TABLE, CREATE_PANELS_TABLE,
-  CREATE_GUILD_CONFIG_TABLE, CREATE_GUILD_SUPPORT_ROLES_TABLE, CREATE_TICKET_CATEGORY_CONFIG_TABLE,
+  CREATE_GUILD_CONFIG_TABLE, CREATE_GUILD_SUPPORT_ROLES_TABLE,
+  CREATE_TICKET_CATEGORY_CONFIG_TABLE, CREATE_OLDMAN_CONFIG_TABLE,
 } from './schema';
 import type { Ticket, Panel, GuildConfig, TicketCategoryConfig } from '../types';
 import { logger } from '../utils/logger';
@@ -21,6 +22,7 @@ export function initDb(path: string): void {
   db.exec(CREATE_GUILD_CONFIG_TABLE);
   db.exec(CREATE_GUILD_SUPPORT_ROLES_TABLE);
   db.exec(CREATE_TICKET_CATEGORY_CONFIG_TABLE);
+  db.exec(CREATE_OLDMAN_CONFIG_TABLE);
   if (path !== ':memory:') logger.info(`Datenbank initialisiert: ${path}`);
 }
 
@@ -175,6 +177,27 @@ export function deleteTicketCategoryConfig(guildId: string, key: string): void {
   getDb()
     .prepare('DELETE FROM ticket_category_config WHERE guild_id = ? AND key = ?')
     .run(guildId, key);
+}
+
+export function getOldManChannel(guildId: string): string | undefined {
+  const row = getDb()
+    .prepare('SELECT channel_id FROM oldman_config WHERE guild_id = ?')
+    .get(guildId) as { channel_id: string } | undefined;
+  return row?.channel_id;
+}
+
+export function setOldManChannel(guildId: string, channelId: string): void {
+  getDb().prepare(`
+    INSERT INTO oldman_config (guild_id, channel_id)
+    VALUES (?, ?)
+    ON CONFLICT(guild_id) DO UPDATE SET channel_id = excluded.channel_id
+  `).run(guildId, channelId);
+}
+
+export function disableOldManChannel(guildId: string): void {
+  getDb()
+    .prepare('DELETE FROM oldman_config WHERE guild_id = ?')
+    .run(guildId);
 }
 
 function getTicketById(id: number): Ticket | undefined {

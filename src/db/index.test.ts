@@ -3,6 +3,7 @@ import {
   initDb, createTicket, findOpenTicketByUser,
   findTicketByChannel, closeTicket, claimTicket,
   upsertPanel, getPanel,
+  getOldManChannel, setOldManChannel, disableOldManChannel,
 } from './index';
 
 beforeEach(() => {
@@ -69,5 +70,32 @@ describe('panels', () => {
 
   it('getPanel returns undefined for unknown guild', () => {
     expect(getPanel('unknown', 'tickets')).toBeUndefined();
+  });
+});
+
+describe('oldman_config', () => {
+  it('setOldManChannel stores a channel and getOldManChannel retrieves it', () => {
+    setOldManChannel('g1', 'ch1');
+    expect(getOldManChannel('g1')).toBe('ch1');
+  });
+
+  it('setOldManChannel overwrites an existing entry', () => {
+    setOldManChannel('g1', 'ch1');
+    setOldManChannel('g1', 'ch2');
+    expect(getOldManChannel('g1')).toBe('ch2');
+  });
+
+  it('getOldManChannel returns undefined when not configured', () => {
+    expect(getOldManChannel('unknown-guild')).toBeUndefined();
+  });
+
+  it('disableOldManChannel removes the entry', () => {
+    setOldManChannel('g1', 'ch1');
+    disableOldManChannel('g1');
+    expect(getOldManChannel('g1')).toBeUndefined();
+  });
+
+  it('disableOldManChannel does not throw when entry does not exist', () => {
+    expect(() => disableOldManChannel('nonexistent')).not.toThrow();
   });
 });
