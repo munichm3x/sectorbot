@@ -135,69 +135,73 @@ Der Bot öffnet ein interaktives **Setup Center** als ephemeral Message (nur du 
 
 ---
 
-## Sector 13 Old Man Lore Bot
+## Sector 13 Old Man
 
-A dedicated Discord channel hosts an in-universe SCUM character — "The Old Man of Sector 13". He responds to every message in that channel in character: dark, short, atmospheric. He never breaks character.
+The Old Man is a legendary survivor who responds to messages in a designated channel on your server. Configure his channel with a slash command; he replies using a local Ollama model (or built-in fallbacks when Ollama is unavailable).
 
-### Enable the lore channel
+### Setup
 
-1. Copy the channel ID from Discord (right-click the channel → **Copy Channel ID**)
-2. Add it to your `.env`:
+1. **Install Ollama**
+   ```
+   winget install Ollama.Ollama
+   ```
 
-```
-LORE_CHANNEL_ID=your_channel_id_here
-```
+2. **Pull the base model**
+   ```
+   ollama pull llama3.1:8b
+   ```
 
-3. Restart the bot.
+3. **Create the custom model**
+   ```
+   ollama create sector13-oldman -f Modelfile.oldman
+   ```
 
-### Install Ollama (optional, for AI-generated replies)
+4. **Test it**
+   ```
+   ollama run sector13-oldman
+   ```
 
-Ollama runs a local language model on your machine. Without it, the bot uses handcrafted fallback lines.
+5. **Set environment variables** (optional — these are the defaults)
+   ```
+   OLLAMA_MODEL=sector13-oldman
+   OLLAMA_URL=http://localhost:11434/api/generate
+   OLD_MAN_COOLDOWN_MS=5000
+   ```
 
-1. Download and install Ollama from [ollama.com](https://ollama.com)
-2. Pull the model:
+6. **Start the bot**
 
-```bash
-ollama pull llama3.1:8b
-```
+7. **Configure a channel in Discord**
+   ```
+   /oldman-channel set #your-channel
+   ```
 
-3. Start the Ollama server:
+### Slash Commands
 
-```bash
-ollama serve
-```
+| Command | Permission | Description |
+|---|---|---|
+| `/oldman-channel set #channel` | Manage Server | Designate a channel for the Old Man |
+| `/oldman-channel show` | Anyone | Show the currently configured channel |
+| `/oldman-channel disable` | Manage Server | Disable the Old Man on this server |
 
-The bot connects to `http://localhost:11434/api/generate` by default. Override with:
+### In-Channel Text Commands
 
-```
-OLLAMA_URL=http://your-host:11434/api/generate
-OLLAMA_MODEL=llama3.1:8b
-```
+Type these at the start of a message in the Old Man channel:
 
-### Fallback mode
-
-If Ollama is not running, times out, or returns an empty response, the bot automatically falls back to a pool of handcrafted in-character lines. The bot will still respond — just without AI generation. No configuration needed.
-
-### In-channel commands
-
-| Command | Effect |
+| Command | Description |
 |---|---|
-| `/story` | The Old Man tells a fictional Sector 13 survival story |
-| `/wisdom` | One piece of short, dark survival wisdom |
-| `/rumor` | A dark, believable rumor from the SCUM world |
-| `/name` | Gives you a dark survivor nickname |
+| `/story` | A dark survival story from Sector 13 |
+| `/wisdom` | A short piece of dark survival wisdom |
+| `/rumor` | A disturbing rumor from this world |
+| `/name` | A dark survivor nickname (remembered for the session) |
+| `/lastwords` | A final radio transmission from a lost survivor |
+| `/prison` | A disturbing observation about the prison island |
+| `/bunker` | An atmospheric bunker description |
 
-Type these as plain text messages in the channel — they are not registered Discord slash commands.
+These are plain text prefixes, not Discord slash commands — just type them in the configured channel.
 
-Any other message receives an in-character reply.
+### Fallback Mode
 
-### `.env` reference
-
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `LORE_CHANNEL_ID` | Yes | — | Channel ID where the Old Man responds |
-| `OLLAMA_URL` | No | `http://localhost:11434/api/generate` | Ollama API endpoint |
-| `OLLAMA_MODEL` | No | `llama3.1:8b` | Ollama model name |
+If Ollama is unavailable or times out, the Old Man replies from a built-in pool of handcrafted responses. Fallback replies are mode-specific: `/wisdom` gets a wisdom fallback, `/rumor` gets a rumor fallback, and so on.
 
 ---
 
