@@ -53,45 +53,45 @@ describe('buildOldManPrompt', () => {
   const baseMemory = { displayName: 'Sasha', messages: [] };
 
   it('includes the username and message', () => {
-    const prompt = buildOldManPrompt('Sasha', 'What happened here?', baseMemory, null);
+    const prompt = buildOldManPrompt('What happened here?', baseMemory, null);
     expect(prompt).toContain('Sasha');
     expect(prompt).toContain('What happened here?');
   });
 
   it('includes command directive for /story', () => {
-    const prompt = buildOldManPrompt('Sasha', '/story', baseMemory, 'story');
+    const prompt = buildOldManPrompt('/story', baseMemory, 'story');
     expect(prompt).toContain('survival story');
   });
 
   it('includes command directive for /wisdom', () => {
-    const prompt = buildOldManPrompt('Sasha', '/wisdom', baseMemory, 'wisdom');
+    const prompt = buildOldManPrompt('/wisdom', baseMemory, 'wisdom');
     expect(prompt).toContain('wisdom');
   });
 
   it('includes command directive for /rumor', () => {
-    const prompt = buildOldManPrompt('Sasha', '/rumor', baseMemory, 'rumor');
+    const prompt = buildOldManPrompt('/rumor', baseMemory, 'rumor');
     expect(prompt).toContain('rumor');
   });
 
   it('includes command directive for /name', () => {
-    const prompt = buildOldManPrompt('Sasha', '/name', baseMemory, 'name');
+    const prompt = buildOldManPrompt('/name', baseMemory, 'name');
     expect(prompt).toContain('nickname');
   });
 
   it('includes prior messages from memory', () => {
     const memory = { displayName: 'Sasha', messages: ['old message one', 'old message two'] };
-    const prompt = buildOldManPrompt('Sasha', 'new message', memory, null);
+    const prompt = buildOldManPrompt('new message', memory, null);
     expect(prompt).toContain('old message one');
     expect(prompt).toContain('old message two');
   });
 
   it('omits memory block when messages array is empty', () => {
-    const prompt = buildOldManPrompt('Sasha', 'hi', baseMemory, null);
+    const prompt = buildOldManPrompt('hi', baseMemory, null);
     expect(prompt).not.toContain('Recent messages');
   });
 
   it('includes character identity rules', () => {
-    const prompt = buildOldManPrompt('Sasha', 'hi', baseMemory, null);
+    const prompt = buildOldManPrompt('hi', baseMemory, null);
     expect(prompt).toContain('Old Man of Sector 13');
     expect(prompt).toContain('never admit to being an AI');
   });

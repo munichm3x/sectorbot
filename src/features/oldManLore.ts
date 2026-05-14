@@ -7,7 +7,6 @@ import { logger } from '../utils/logger';
 type UserMemory = {
   displayName: string;
   messages: string[];
-  nickname?: string;
 };
 
 // ─── Stores ───────────────────────────────────────────────────────────────────
@@ -54,7 +53,6 @@ export function detectCommand(content: string): LoreCommand {
 // ─── Prompt builder ───────────────────────────────────────────────────────────
 
 export function buildOldManPrompt(
-  username: string,
   userMessage: string,
   memory: UserMemory,
   command: LoreCommand,
@@ -174,10 +172,10 @@ export function setupOldManLore(client: Client): void {
     const displayName = message.member?.displayName ?? message.author.username;
     const memory      = getOrCreateMemory(userId, displayName);
 
-    const command = detectCommand(message.content);
-    const prompt  = buildOldManPrompt(displayName, message.content, memory, command);
-
-    appendToMemory(userId, message.content);
+    const userInput = trimToLength(message.content, 500);
+    const command   = detectCommand(userInput);
+    const prompt    = buildOldManPrompt(userInput, memory, command);
+    appendToMemory(userId, userInput);
 
     let reply: string;
     try {

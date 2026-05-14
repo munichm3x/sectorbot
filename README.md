@@ -187,6 +187,8 @@ If Ollama is not running, times out, or returns an empty response, the bot autom
 | `/rumor` | A dark, believable rumor from the SCUM world |
 | `/name` | Gives you a dark survivor nickname |
 
+Type these as plain text messages in the channel — they are not registered Discord slash commands.
+
 Any other message receives an in-character reply.
 
 ### `.env` reference
