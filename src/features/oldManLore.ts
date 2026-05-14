@@ -5,7 +5,7 @@ import { getOldManChannel } from '../db/index';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type LoreCommand = 'story' | 'wisdom' | 'rumor' | 'name' | 'lastwords' | 'prison' | 'bunker' | null;
+export type LoreCommand = 'story' | 'wisdom' | 'rumor' | 'name' | 'lastwords' | 'prison' | 'bunker' | null;
 
 type UserMemory = {
   displayName: string;

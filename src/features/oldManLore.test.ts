@@ -5,6 +5,7 @@ import {
   buildOldManPrompt,
   randomFallback,
 } from './oldManLore';
+import type { LoreCommand } from './oldManLore';
 
 describe('trimToLength', () => {
   it('returns text unchanged when within limit', () => {
@@ -46,6 +47,18 @@ describe('detectCommand', () => {
 
   it('returns null for unknown slash commands', () => {
     expect(detectCommand('/unknown')).toBeNull();
+  });
+
+  it('detects /lastwords', () => {
+    expect(detectCommand('/lastwords')).toBe('lastwords');
+  });
+
+  it('detects /prison', () => {
+    expect(detectCommand('/prison help')).toBe('prison');
+  });
+
+  it('detects /bunker', () => {
+    expect(detectCommand('/bunker')).toBe('bunker');
   });
 });
 
@@ -95,6 +108,32 @@ describe('buildOldManPrompt', () => {
     expect(prompt).toContain('Old Man of Sector 13');
     expect(prompt).toContain('never admit to being an AI');
   });
+
+  it('includes nickname context when memory has nickname', () => {
+    const memory = { displayName: 'Sasha', messages: [], nickname: 'The Crow' };
+    const prompt = buildOldManPrompt('hi', memory, null);
+    expect(prompt).toContain('This survivor is known as: The Crow');
+  });
+
+  it('omits nickname context when memory has no nickname', () => {
+    const prompt = buildOldManPrompt('hi', baseMemory, null);
+    expect(prompt).not.toContain('This survivor is known as:');
+  });
+
+  it('includes command directive for /lastwords', () => {
+    const prompt = buildOldManPrompt('/lastwords', baseMemory, 'lastwords');
+    expect(prompt).toContain('radio transmission');
+  });
+
+  it('includes command directive for /prison', () => {
+    const prompt = buildOldManPrompt('/prison', baseMemory, 'prison');
+    expect(prompt).toContain('prison');
+  });
+
+  it('includes command directive for /bunker', () => {
+    const prompt = buildOldManPrompt('/bunker', baseMemory, 'bunker');
+    expect(prompt).toContain('bunker');
+  });
 });
 
 describe('randomFallback', () => {
@@ -107,5 +146,16 @@ describe('randomFallback', () => {
   it('returns different values across calls (probabilistic)', () => {
     const results = new Set(Array.from({ length: 50 }, () => randomFallback()));
     expect(results.size).toBeGreaterThan(1);
+  });
+
+  it('returns a non-empty string for each mode', () => {
+    const modes: Array<LoreCommand> = [
+      'story', 'wisdom', 'rumor', 'name', 'lastwords', 'prison', 'bunker', null,
+    ];
+    for (const mode of modes) {
+      const result = randomFallback(mode);
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeGreaterThan(0);
+    }
   });
 });
