@@ -15,5 +15,5 @@ export const env = {
   NODE_ENV:            process.env.NODE_ENV ?? 'development',
   OLLAMA_URL:          process.env.OLLAMA_URL ?? 'http://localhost:11434/api/generate',
   OLLAMA_MODEL:        process.env.OLLAMA_MODEL ?? 'sector13-oldman',
-  OLD_MAN_COOLDOWN_MS: Number(process.env.OLD_MAN_COOLDOWN_MS ?? '5000'),
+  OLD_MAN_COOLDOWN_MS: (() => { const n = Number(process.env.OLD_MAN_COOLDOWN_MS); return Number.isFinite(n) && n >= 0 ? n : 5000; })(),
 } as const;
