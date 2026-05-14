@@ -5,6 +5,7 @@ import {
   client, commands, buttonHandlers, selectMenuHandlers,
   channelSelectHandlers, roleSelectHandlers, modalHandlers,
 } from './client';
+import { setupOldManLore } from './features/oldManLore';
 
 // Commands
 import { setupCommand } from './commands/setup';
@@ -74,4 +75,5 @@ client.once('ready', (c) => {
 });
 
 initDb(env.DATABASE_PATH);
+setupOldManLore(client);
 client.login(env.DISCORD_TOKEN);
