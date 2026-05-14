@@ -173,10 +173,11 @@ export function setupOldManLore(client: Client): void {
 
     const displayName = message.member?.displayName ?? message.author.username;
     const memory      = getOrCreateMemory(userId, displayName);
-    appendToMemory(userId, message.content);
 
     const command = detectCommand(message.content);
     const prompt  = buildOldManPrompt(displayName, message.content, memory, command);
+
+    appendToMemory(userId, message.content);
 
     let reply: string;
     try {
