@@ -5,8 +5,9 @@ import {
   CREATE_TICKETS_TABLE, CREATE_PANELS_TABLE,
   CREATE_GUILD_CONFIG_TABLE, CREATE_GUILD_SUPPORT_ROLES_TABLE,
   CREATE_TICKET_CATEGORY_CONFIG_TABLE, CREATE_OLDMAN_CONFIG_TABLE,
+  CREATE_CHANGELOG_CONFIG_TABLE,
 } from './schema';
-import type { Ticket, Panel, GuildConfig, TicketCategoryConfig } from '../types';
+import type { Ticket, Panel, GuildConfig, TicketCategoryConfig, ChangelogConfig } from '../types';
 import { logger } from '../utils/logger';
 
 let db: Database.Database;
@@ -23,6 +24,7 @@ export function initDb(path: string): void {
   db.exec(CREATE_GUILD_SUPPORT_ROLES_TABLE);
   db.exec(CREATE_TICKET_CATEGORY_CONFIG_TABLE);
   db.exec(CREATE_OLDMAN_CONFIG_TABLE);
+  db.exec(CREATE_CHANGELOG_CONFIG_TABLE);
   if (path !== ':memory:') logger.info(`Datenbank initialisiert: ${path}`);
 }
 
@@ -204,4 +206,30 @@ function getTicketById(id: number): Ticket | undefined {
   return getDb()
     .prepare(`SELECT * FROM tickets WHERE id = ?`)
     .get(id) as Ticket | undefined;
+}
+
+export function getChangelogConfig(guildId: string): ChangelogConfig | undefined {
+  return getDb()
+    .prepare('SELECT * FROM changelog_config WHERE guild_id = ?')
+    .get(guildId) as ChangelogConfig | undefined;
+}
+
+export function upsertChangelogConfig(
+  guildId: string,
+  data: Partial<Omit<ChangelogConfig, 'guild_id'>>,
+): ChangelogConfig {
+  getDb().prepare(`
+    INSERT INTO changelog_config (guild_id, create_channel_id, public_channel_id, dashboard_msg_id)
+    VALUES (@guild_id, @create_channel_id, @public_channel_id, @dashboard_msg_id)
+    ON CONFLICT(guild_id) DO UPDATE SET
+      create_channel_id = COALESCE(@create_channel_id, create_channel_id),
+      public_channel_id = COALESCE(@public_channel_id, public_channel_id),
+      dashboard_msg_id  = COALESCE(@dashboard_msg_id,  dashboard_msg_id)
+  `).run({
+    guild_id:          guildId,
+    create_channel_id: data.create_channel_id ?? null,
+    public_channel_id: data.public_channel_id ?? null,
+    dashboard_msg_id:  data.dashboard_msg_id  ?? null,
+  });
+  return getChangelogConfig(guildId)!;
 }

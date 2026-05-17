@@ -101,3 +101,21 @@ export interface ModalHandler {
   prefix: string;
   execute: (interaction: ModalSubmitInteraction, payload: string) => Promise<unknown>;
 }
+
+export interface ChangelogConfig {
+  guild_id:          string;
+  create_channel_id: string | null;
+  public_channel_id: string | null;
+  dashboard_msg_id:  string | null;
+}
+
+export interface ChangelogDraft {
+  version:   string;
+  title:     string;
+  added:     string;
+  changed:   string;
+  fixed:     string;
+  removed:   string;
+  notes:     string;
+  createdAt: number;
+}

@@ -68,3 +68,12 @@ export const CREATE_OLDMAN_CONFIG_TABLE = `
     channel_id TEXT NOT NULL
   )
 `;
+
+export const CREATE_CHANGELOG_CONFIG_TABLE = `
+  CREATE TABLE IF NOT EXISTS changelog_config (
+    guild_id          TEXT PRIMARY KEY,
+    create_channel_id TEXT,
+    public_channel_id TEXT,
+    dashboard_msg_id  TEXT
+  )
+`;
