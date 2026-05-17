@@ -6,6 +6,9 @@ import {
   channelSelectHandlers, roleSelectHandlers, modalHandlers,
 } from './client';
 import { setupOldManLore } from './features/oldManLore';
+import { setupChangelogDashboard } from './features/changelogDashboard';
+import { changelogButtonHandler } from './interactions/buttons/changelogButtonHandler';
+import { changelogModalHandler } from './interactions/modals/changelogModalHandler';
 
 // Commands
 import { setupCommand } from './commands/setup';
@@ -56,7 +59,7 @@ selectMenuHandlers.set(ticketCategoryHandler.prefix, ticketCategoryHandler);
 for (const handler of [
   ticketCloseHandler, ticketConfirmCloseHandler, ticketCancelCloseHandler,
   ticketClaimHandler, ticketAddPromptHandler, ticketRemovePromptHandler,
-  acceptRulesHandler, setupButtonDispatcher,
+  acceptRulesHandler, setupButtonDispatcher, changelogButtonHandler,
 ]) {
   buttonHandlers.set(handler.prefix, handler);
 }
@@ -69,6 +72,7 @@ roleSelectHandlers.set(setupRoleSelectDispatcher.prefix, setupRoleSelectDispatch
 modalHandlers.set(ticketAddModalHandler.prefix, ticketAddModalHandler);
 modalHandlers.set(ticketRemoveModalHandler.prefix, ticketRemoveModalHandler);
 modalHandlers.set(setupAddCategoryModal.prefix, setupAddCategoryModal);
+modalHandlers.set(changelogModalHandler.prefix, changelogModalHandler);
 
 client.once('ready', (c) => {
   logger.info(`Bot online: ${c.user.tag} (${c.user.id})`);
@@ -77,4 +81,5 @@ client.once('ready', (c) => {
 
 initDb(env.DATABASE_PATH);
 setupOldManLore(client);
+setupChangelogDashboard(client);
 client.login(env.DISCORD_TOKEN);
