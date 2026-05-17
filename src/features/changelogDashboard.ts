@@ -9,7 +9,7 @@ import {
   type Client,
   type Guild,
 } from 'discord.js';
-import { SECTOR_COLORS, BRAND } from '../ui/brand';
+import { BRAND } from '../ui/brand';
 import { getChangelogConfig, upsertChangelogConfig } from '../db/index';
 import { logger } from '../utils/logger';
 import type { ChangelogConfig, ChangelogDraft } from '../types';
@@ -57,9 +57,9 @@ export function formatChangelogEntries(text: string): string | null {
 
 export function splitFieldValue(value: string, maxLength = 1024): string[] {
   if (value.length <= maxLength) return [value];
-  const lines  = value.split('\n');
+  const lines = value.split('\n');
   const parts: string[] = [];
-  let current  = '';
+  let current = '';
   for (const line of lines) {
     const candidate = current ? `${current}\n${line}` : line;
     if (candidate.length > maxLength) {
