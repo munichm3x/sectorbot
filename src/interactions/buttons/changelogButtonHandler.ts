@@ -1,7 +1,7 @@
 import { PermissionFlagsBits, type ButtonInteraction } from 'discord.js';
 import {
   getDraft, deleteDraft, draftKey,
-  buildChangelogEmbed, buildPreviewComponents,
+  buildChangelogEmbed,
   buildChangelogModal1, buildChangelogModal2,
   buildDashboardEmbed, buildDashboardComponents,
   ensureChangelogDashboard,
