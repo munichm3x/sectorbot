@@ -17,7 +17,7 @@ import {
   type MessageActionRowComponentBuilder,
 } from 'discord.js';
 import { BRAND, SECTOR_COLORS } from '../ui/brand';
-import type { GuildConfig, TicketCategoryConfig, DoctorCheck } from '../types';
+import type { GuildConfig, TicketCategoryConfig, DoctorCheck, ChangelogConfig } from '../types';
 import { IDS } from '../utils/ids';
 
 // ─── PUBLIC / BRANDED ─────────────────────────────────────────────────────────
@@ -244,6 +244,7 @@ export function buildWizardStep0Components(): ActionRowBuilder<ButtonBuilder>[] 
   return [
     new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('s:step:1').setLabel('Einrichtung starten').setEmoji('▶').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('s:cl:home').setLabel('Changelog-System').setEmoji('🧾').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('s:doctor').setLabel('Diagnose').setEmoji('🩺').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('s:step:cancel').setLabel('Schließen').setStyle(ButtonStyle.Secondary),
     ),
@@ -720,4 +721,56 @@ export function buildAddCategoryModal(): ModalBuilder {
           .setRequired(true)
       ),
     );
+}
+
+// ─── CHANGELOG SETUP STEP ─────────────────────────────────────────────────────
+
+export function createWizardChangelogEmbed(config: ChangelogConfig | undefined): EmbedBuilder {
+  const createCh = config?.create_channel_id ? `<#${config.create_channel_id}>` : '⬜ *nicht gesetzt*';
+  const publicCh = config?.public_channel_id ? `<#${config.public_channel_id}>` : '⬜ *nicht gesetzt*';
+  const hasConfig = !!(config?.create_channel_id && config?.public_channel_id);
+
+  return new EmbedBuilder()
+    .setColor(hasConfig ? SECTOR_COLORS.MILITARY_GREEN : SECTOR_COLORS.SECTOR_RED)
+    .setTitle('🧾 Changelog-System einrichten')
+    .setDescription(
+      'Wähle einen **privaten Team-Kanal** für das Dashboard (nur euer Team sieht es) ' +
+      'und einen **öffentlichen Kanal**, in dem jeder veröffentlichte Changelog erscheint.\n\n' +
+      'Nach der Auswahl beider Kanäle: **„Dashboard erstellen"** klicken.'
+    )
+    .addFields(
+      { name: '📝 Erstellen-Kanal (privat)',     value: createCh, inline: true },
+      { name: '📢 Öffentlicher Changelog-Kanal', value: publicCh, inline: true },
+    )
+    .setFooter({ text: 'Changelog-System • Bot einrichten' })
+    .setTimestamp();
+}
+
+export function buildWizardChangelogComponents(): ActionRowBuilder<MessageActionRowComponentBuilder>[] {
+  return [
+    new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+      new ChannelSelectMenuBuilder()
+        .setCustomId('s:cl:create')
+        .setPlaceholder('📝 Erstellen-Kanal (privat) auswählen...')
+        .setChannelTypes(ChannelType.GuildText),
+    ) as unknown as ActionRowBuilder<MessageActionRowComponentBuilder>,
+    new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+      new ChannelSelectMenuBuilder()
+        .setCustomId('s:cl:public')
+        .setPlaceholder('📢 Öffentlichen Changelog-Kanal auswählen...')
+        .setChannelTypes(ChannelType.GuildText),
+    ) as unknown as ActionRowBuilder<MessageActionRowComponentBuilder>,
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('s:step:0')
+        .setLabel('Zurück')
+        .setEmoji('◀')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('s:cl:save')
+        .setLabel('Dashboard erstellen')
+        .setEmoji('🧾')
+        .setStyle(ButtonStyle.Success),
+    ) as unknown as ActionRowBuilder<MessageActionRowComponentBuilder>,
+  ];
 }
