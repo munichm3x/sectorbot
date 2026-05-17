@@ -43,7 +43,11 @@ export const changelogButtonHandler: ButtonHandler = {
       await interaction.deferUpdate();
       await ensureChangelogDashboard(guild);
       const config = getChangelogConfig(guildId);
-      if (!config) return;
+      if (!config) {
+        return interaction.editReply({
+          content: '⚠️ Changelog-System nicht konfiguriert. Bitte /setup → Changelog-System ausführen.',
+        });
+      }
       return interaction.editReply({
         embeds:     [buildDashboardEmbed(config)],
         components: buildDashboardComponents(),
@@ -66,9 +70,11 @@ export const changelogButtonHandler: ButtonHandler = {
     // ── Publish changelog ──────────────────────────────────────────────────────
 
     if (payload === 'publish') {
+      await interaction.deferUpdate();
+
       const draft = getDraft(key);
       if (!draft) {
-        return interaction.update({
+        return interaction.editReply({
           content:    'Entwurf abgelaufen. Bitte neu erstellen.',
           embeds:     [],
           components: [],
@@ -78,25 +84,28 @@ export const changelogButtonHandler: ButtonHandler = {
       const hasContent = [draft.added, draft.changed, draft.fixed, draft.removed, draft.notes]
         .some(f => f.trim().length > 0);
       if (!hasContent) {
-        return interaction.reply({
-          content:   '⚠️ Mindestens eine Kategorie muss ausgefüllt sein.',
-          ephemeral: true,
+        return interaction.editReply({
+          content:    '⚠️ Mindestens eine Kategorie muss ausgefüllt sein.',
+          embeds:     [],
+          components: [],
         });
       }
 
       const config = getChangelogConfig(guildId);
       if (!config?.public_channel_id) {
-        return interaction.reply({
-          content:   '⚠️ Kein öffentlicher Changelog-Kanal konfiguriert. Bitte /setup → Changelog-System ausführen.',
-          ephemeral: true,
+        return interaction.editReply({
+          content:    '⚠️ Kein öffentlicher Changelog-Kanal konfiguriert. Bitte /setup → Changelog-System ausführen.',
+          embeds:     [],
+          components: [],
         });
       }
 
       const publicChannel = await guild.channels.fetch(config.public_channel_id).catch(() => null);
       if (!publicChannel?.isTextBased()) {
-        return interaction.reply({
-          content:   '⚠️ Öffentlicher Changelog-Kanal nicht gefunden oder ungültig.',
-          ephemeral: true,
+        return interaction.editReply({
+          content:    '⚠️ Öffentlicher Changelog-Kanal nicht gefunden oder ungültig.',
+          embeds:     [],
+          components: [],
         });
       }
 
@@ -105,7 +114,7 @@ export const changelogButtonHandler: ButtonHandler = {
 
       deleteDraft(key);
 
-      return interaction.update({
+      return interaction.editReply({
         content:    '✅ Changelog wurde veröffentlicht.',
         embeds:     [],
         components: [],
