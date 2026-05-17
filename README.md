@@ -254,6 +254,47 @@ src/
 
 ---
 
+## Changelog System
+
+The Changelog System provides a private team dashboard for creating changelogs and a public channel where each published changelog appears as its own standalone embed message.
+
+### Setup
+
+1. Create a **private team channel** (e.g. `#changelog-erstellen`) — only your team should see it.
+2. Create a **public channel** (e.g. `#changelog`) — visible to everyone.
+3. Run `/setup` and click **Changelog-System**.
+4. Use the channel selects to choose the private creation channel and the public changelog channel.
+5. Click **Dashboard erstellen** — the bot posts the persistent dashboard in the private channel.
+
+### Creating a Changelog
+
+1. In the private channel, click **Changelog erstellen**.
+2. Fill in the modal: Version, Titel (optional), Hinzugefügt, Geändert, Behoben.
+3. Review the ephemeral preview embed.
+4. Optionally click **Entfernt/Notizen hinzufügen** for a second modal (Entfernt, Notizen).
+5. Click **Veröffentlichen** — a new embed appears in the public changelog channel.
+6. Each new changelog is its own separate message. Old changelogs are never edited.
+
+### Permissions
+
+Only users with **Manage Guild** (`Server verwalten`) permission can use the dashboard buttons.
+
+### Testing Checklist
+
+- [ ] `/setup` → Changelog-System → select both channels → Dashboard erstellen → dashboard appears in private channel
+- [ ] Restarting the bot edits the existing dashboard — no duplicate messages
+- [ ] "Changelog erstellen" opens a 5-field modal
+- [ ] Each input line becomes one bullet point (`•`)
+- [ ] Empty categories are omitted from the embed
+- [ ] Preview is ephemeral (only visible to the user who clicked)
+- [ ] "Entfernt/Notizen hinzufügen" opens a second modal and updates the preview in place
+- [ ] "Veröffentlichen" sends a new message to the public channel
+- [ ] Creating a second changelog sends another new message — old ones untouched
+- [ ] Users without Manage Guild see the German permission error ephemeral
+- [ ] Drafts expire after 30 minutes
+
+---
+
 ## Tests
 
 ```bash
