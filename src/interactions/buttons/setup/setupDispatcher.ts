@@ -25,6 +25,9 @@ import { runDoctorChecks } from '../../../commands/doctor';
 import { isAdmin } from '../../../services/permissionService';
 import { replyError } from '../../../utils/errors';
 import type { ButtonHandler } from '../../../types';
+import { getChangelogConfig } from '../../../db/index';
+import { createWizardChangelogEmbed, buildWizardChangelogComponents } from '../../../services/embedService';
+import { ensureChangelogDashboard } from '../../../features/changelogDashboard';
 
 export const setupButtonDispatcher: ButtonHandler = {
   prefix: 's',
@@ -268,6 +271,30 @@ export const setupButtonDispatcher: ButtonHandler = {
       return interaction.editReply({
         embeds: [createWizardDoneEmbed(finalConfig)],
         components: buildWizardDoneComponents(),
+      });
+    }
+
+    // ── Changelog-System setup ────────────────────────────────────────────────
+
+    if (payload === 'cl:home') {
+      const clConfig = getChangelogConfig(guildId);
+      return interaction.update({
+        embeds:     [createWizardChangelogEmbed(clConfig)],
+        components: buildWizardChangelogComponents(),
+      });
+    }
+
+    if (payload === 'cl:save') {
+      const clConfig = getChangelogConfig(guildId);
+      if (!clConfig?.create_channel_id || !clConfig.public_channel_id) {
+        return replyError(interaction, 'Bitte wähle zuerst beide Kanäle aus.');
+      }
+      await interaction.deferUpdate();
+      await ensureChangelogDashboard(guild);
+      const updated = getChangelogConfig(guildId)!;
+      return interaction.editReply({
+        embeds:     [createWizardChangelogEmbed(updated)],
+        components: buildWizardChangelogComponents(),
       });
     }
   },

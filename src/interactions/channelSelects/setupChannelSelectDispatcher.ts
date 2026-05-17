@@ -8,6 +8,8 @@ import {
 import { isAdmin } from '../../services/permissionService';
 import { replyError } from '../../utils/errors';
 import type { ChannelSelectMenuHandler } from '../../types';
+import { getChangelogConfig, upsertChangelogConfig } from '../../db/index';
+import { createWizardChangelogEmbed, buildWizardChangelogComponents } from '../../services/embedService';
 
 export const setupChannelSelectDispatcher: ChannelSelectMenuHandler = {
   prefix: 's',
@@ -51,6 +53,26 @@ export const setupChannelSelectDispatcher: ChannelSelectMenuHandler = {
       return interaction.update({
         embeds: [createWizardStep5Embed(config)],
         components: buildWizardStep5Components(),
+      });
+    }
+
+    // Changelog – Erstellen-Kanal
+    if (payload === 'cl:create') {
+      upsertChangelogConfig(guildId, { create_channel_id: channelId });
+      const clConfig = getChangelogConfig(guildId)!;
+      return interaction.update({
+        embeds:     [createWizardChangelogEmbed(clConfig)],
+        components: buildWizardChangelogComponents(),
+      });
+    }
+
+    // Changelog – Öffentlicher Kanal
+    if (payload === 'cl:public') {
+      upsertChangelogConfig(guildId, { public_channel_id: channelId });
+      const clConfig = getChangelogConfig(guildId)!;
+      return interaction.update({
+        embeds:     [createWizardChangelogEmbed(clConfig)],
+        components: buildWizardChangelogComponents(),
       });
     }
   },
