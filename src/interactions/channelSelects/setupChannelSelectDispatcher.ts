@@ -8,8 +8,15 @@ import {
 import { isAdmin } from '../../services/permissionService';
 import { replyError } from '../../utils/errors';
 import type { ChannelSelectMenuHandler } from '../../types';
-import { getChangelogConfig, upsertChangelogConfig } from '../../db/index';
-import { createWizardChangelogEmbed, buildWizardChangelogComponents } from '../../services/embedService';
+import {
+  getChangelogConfig, upsertChangelogConfig,
+  getScumStatusConfig, upsertScumStatusConfig,
+} from '../../db/index';
+import {
+  createWizardChangelogEmbed, buildWizardChangelogComponents,
+  createWizardScumStatusEmbed, buildWizardScumStatusComponents,
+} from '../../services/embedService';
+import { startInterval } from '../../features/scumStatus/scumStatus.updater';
 
 export const setupChannelSelectDispatcher: ChannelSelectMenuHandler = {
   prefix: 's',
@@ -73,6 +80,22 @@ export const setupChannelSelectDispatcher: ChannelSelectMenuHandler = {
       return interaction.update({
         embeds:     [createWizardChangelogEmbed(clConfig)],
         components: buildWizardChangelogComponents(),
+      });
+    }
+
+    // SCUM Status – Status-Channel
+    if (payload === 'ss:channel') {
+      upsertScumStatusConfig(guildId, { channel_id: channelId });
+
+      const scumConfig = getScumStatusConfig(guildId);
+      if (scumConfig?.enabled && scumConfig.host && scumConfig.query_port) {
+        startInterval(guildId);
+      }
+
+      const updated = getScumStatusConfig(guildId);
+      return interaction.update({
+        embeds:     [createWizardScumStatusEmbed(updated)],
+        components: buildWizardScumStatusComponents(updated),
       });
     }
   },
