@@ -1,15 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const mockQuery = vi.hoisted(() => vi.fn());
+vi.mock('gamedig', () => ({ default: { query: mockQuery } }));
+
 import { queryServer } from './scumStatus.service';
-import type { QueryResult } from './scumStatus.service';
-
-vi.mock('gamedig', () => ({
-  GameDig: {
-    query: vi.fn(),
-  },
-}));
-
-import { GameDig } from 'gamedig';
-const mockQuery = vi.mocked(GameDig.query);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -26,7 +20,7 @@ describe('queryServer', () => {
       bots: [],
       connect: '1.2.3.4:7042',
       ping: 43,
-    } as any);
+    });
 
     const result = await queryServer('1.2.3.4', 27015);
 

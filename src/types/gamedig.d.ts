@@ -10,14 +10,16 @@ declare module 'gamedig' {
     ping:       number;
   }
 
-  class GameDig {
-    static query(options: {
-      type:          string;
-      host:          string;
-      port:          number;
-      requestRules?: boolean;
-    }): Promise<QueryResult>;
+  interface QueryOptions {
+    type:          string;
+    host:          string;
+    port:          number;
+    requestRules?: boolean;
   }
 
-  export { GameDig };
+  namespace Gamedig {
+    function query(options: QueryOptions): Promise<QueryResult>;
+  }
+
+  export = Gamedig;
 }
