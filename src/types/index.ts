@@ -119,3 +119,15 @@ export interface ChangelogDraft {
   notes:     string;
   createdAt: number;
 }
+
+export interface ScumStatusConfig {
+  guild_id:             string;
+  enabled:              number;       // 1 = aktiv, 0 = deaktiviert (SQLite INTEGER)
+  channel_id:           string | null;
+  message_id:           string | null;
+  host:                 string | null;
+  query_port:           number | null;
+  update_interval_secs: number;
+  created_at:           string;
+  updated_at:           string;
+}

@@ -15,4 +15,6 @@ export const SECTOR_COLORS = {
   ASH:            0x6B6B6B,
   WARNING_AMBER:  0xB36B00,
   MILITARY_GREEN: 0x3E5F3E,
+  ONLINE_GREEN:   0x57F287,
+  OFFLINE_RED:    0xED4245,
 } as const;

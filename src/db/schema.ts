@@ -77,3 +77,17 @@ export const CREATE_CHANGELOG_CONFIG_TABLE = `
     dashboard_msg_id  TEXT
   )
 `;
+
+export const CREATE_SCUM_STATUS_CONFIG_TABLE = `
+  CREATE TABLE IF NOT EXISTS scum_status_config (
+    guild_id              TEXT    PRIMARY KEY,
+    enabled               INTEGER NOT NULL DEFAULT 1,
+    channel_id            TEXT,
+    message_id            TEXT,
+    host                  TEXT,
+    query_port            INTEGER,
+    update_interval_secs  INTEGER NOT NULL DEFAULT 60,
+    created_at            TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at            TEXT    NOT NULL DEFAULT (datetime('now'))
+  )
+`;
