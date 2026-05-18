@@ -17,7 +17,7 @@ import {
   type MessageActionRowComponentBuilder,
 } from 'discord.js';
 import { BRAND, SECTOR_COLORS } from '../ui/brand';
-import type { GuildConfig, TicketCategoryConfig, DoctorCheck, ChangelogConfig } from '../types';
+import type { GuildConfig, TicketCategoryConfig, DoctorCheck, ChangelogConfig, ScumStatusConfig } from '../types';
 import { IDS } from '../utils/ids';
 
 // ─── PUBLIC / BRANDED ─────────────────────────────────────────────────────────
@@ -245,6 +245,7 @@ export function buildWizardStep0Components(): ActionRowBuilder<ButtonBuilder>[] 
     new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('s:step:1').setLabel('Einrichtung starten').setEmoji('▶').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('s:cl:home').setLabel('Changelog-System').setEmoji('🧾').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('ss:home').setLabel('Server-Status').setEmoji('🖥️').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('s:doctor').setLabel('Diagnose').setEmoji('🩺').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('s:step:cancel').setLabel('Schließen').setStyle(ButtonStyle.Secondary),
     ),
@@ -771,6 +772,95 @@ export function buildWizardChangelogComponents(): ActionRowBuilder<MessageAction
         .setLabel('Dashboard erstellen')
         .setEmoji('🧾')
         .setStyle(ButtonStyle.Success),
+    ) as unknown as ActionRowBuilder<MessageActionRowComponentBuilder>,
+  ];
+}
+
+// ─── SCUM STATUS SETUP STEP ───────────────────────────────────────────────────
+
+export function createWizardScumStatusEmbed(config: ScumStatusConfig | undefined): EmbedBuilder {
+  const channelVal  = config?.channel_id
+    ? `<#${config.channel_id}>`
+    : '⬜ *nicht gesetzt*';
+  const serverVal   = config?.host && config?.query_port
+    ? `${config.host}:${config.query_port}`
+    : '⬜ *nicht konfiguriert*';
+  const intervalVal = config ? `${config.update_interval_secs} Sekunden` : '60 Sekunden';
+
+  let statusVal = '⚪ Nicht eingerichtet';
+  if (config?.enabled && config.message_id)  statusVal = '✅ Aktiv';
+  else if (config?.enabled && config.host)   statusVal = '⚙️ Konfiguriert (nicht gestartet)';
+  else if (config && !config.enabled)        statusVal = '⏹️ Deaktiviert';
+
+  const isConfigured = !!(config?.channel_id && config.host);
+
+  return new EmbedBuilder()
+    .setColor(isConfigured ? SECTOR_COLORS.MILITARY_GREEN : SECTOR_COLORS.SECTOR_RED)
+    .setTitle('🖥️ SCUM-Server-Status')
+    .setDescription(
+      'Richte das automatische Server-Status-Dashboard ein. ' +
+      'Der Bot postet eine Embed-Nachricht im gewählten Channel und aktualisiert sie regelmäßig.',
+    )
+    .addFields(
+      { name: '📡 Status-Channel',           value: channelVal,  inline: true  },
+      { name: '🌐 Server',                   value: serverVal,   inline: true  },
+      { name: '🕐 Aktualisierungsintervall', value: intervalVal, inline: true  },
+      { name: '⚡ Status',                   value: statusVal,   inline: false },
+    )
+    .setFooter({ text: 'SCUM-Server-Status • Bot einrichten' })
+    .setTimestamp();
+}
+
+export function buildWizardScumStatusComponents(
+  config: ScumStatusConfig | undefined,
+): ActionRowBuilder<MessageActionRowComponentBuilder>[] {
+  const canCreate  = !!(config?.channel_id && config.host && config.query_port);
+  const hasMessage = !!config?.message_id;
+  const isEnabled  = !!(config?.enabled);
+
+  return [
+    new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+      new ChannelSelectMenuBuilder()
+        .setCustomId('s:ss:channel')
+        .setPlaceholder('📡 Status-Channel auswählen...')
+        .setChannelTypes(ChannelType.GuildText),
+    ) as unknown as ActionRowBuilder<MessageActionRowComponentBuilder>,
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('ss:config')
+        .setLabel('Server konfigurieren')
+        .setEmoji('⚙️')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('ss:interval')
+        .setLabel('Intervall setzen')
+        .setEmoji('🕐')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('s:step:0')
+        .setLabel('Zurück')
+        .setEmoji('◀')
+        .setStyle(ButtonStyle.Secondary),
+    ) as unknown as ActionRowBuilder<MessageActionRowComponentBuilder>,
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('ss:create')
+        .setLabel('Dashboard erstellen')
+        .setEmoji('▶️')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(!canCreate),
+      new ButtonBuilder()
+        .setCustomId('ss:recreate')
+        .setLabel('Neu erstellen')
+        .setEmoji('🔄')
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(!hasMessage),
+      new ButtonBuilder()
+        .setCustomId('ss:disable')
+        .setLabel('Deaktivieren')
+        .setEmoji('⏹️')
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(!isEnabled),
     ) as unknown as ActionRowBuilder<MessageActionRowComponentBuilder>,
   ];
 }
