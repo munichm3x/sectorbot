@@ -32,7 +32,10 @@ export const oldmanChannelCommand: Command = {
     ),
 
   async execute(interaction: ChatInputCommandInteraction) {
-    if (!interaction.inCachedGuild()) return;
+    if (!interaction.inCachedGuild()) {
+      await interaction.reply({ ephemeral: true, content: 'This command can only be used in a server.' });
+      return;
+    }
 
     const sub = interaction.options.getSubcommand();
 

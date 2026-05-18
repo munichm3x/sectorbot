@@ -16,4 +16,6 @@ export const env = {
   OLLAMA_URL:          process.env.OLLAMA_URL ?? 'http://localhost:11434/api/generate',
   OLLAMA_MODEL:        process.env.OLLAMA_MODEL ?? 'sector13-oldman',
   OLD_MAN_COOLDOWN_MS: (() => { const n = Number(process.env.OLD_MAN_COOLDOWN_MS); return Number.isFinite(n) && n >= 0 ? n : 5000; })(),
+  OLLAMA_TIMEOUT_MS:   (() => { const n = Number(process.env.OLLAMA_TIMEOUT_MS);   return Number.isFinite(n) && n >= 0 ? n : 60000; })(),
+  GROQ_API_KEY:        process.env.GROQ_API_KEY ?? '',
 } as const;

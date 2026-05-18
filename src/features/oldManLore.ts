@@ -24,68 +24,68 @@ const MAX_LENGTH = 1200;
 
 const FALLBACK_POOLS: Record<NonNullable<LoreCommand> | 'general', string[]> = {
   general: [
-    'The radio is quiet tonight. That is never good.',
-    'I knew a man who asked that once. We found his boots near the northern fence.',
-    'Sector 13 does not answer. It waits.',
-    'Trust is heavier than ammunition. And twice as dangerous.',
-    'Rain is coming. It always comes before the bad things.',
-    'The forest remembers everyone who entered. Not everyone who left.',
-    'I stopped counting days after the black convoy passed. Nothing good follows them.',
-    'Silence in Sector 13 is not peace. It is preparation.',
-    'We had a squad once. Eight men. The bunker took four. Hunger took two. One of us did the rest.',
-    'Every dead radio I find still has someone\'s handwriting on the dial. I leave them tuned where they were.',
-    'Betrayal does not feel like a knife. It feels like cold. Slow cold.',
-    'The island does not kill you. It shows you who you were all along.',
+    'Das Funk ist heute Nacht still. Das ist nie ein gutes Zeichen.',
+    'Ich kannte einen Mann, der das auch mal gefragt hat. Wir haben seine Stiefel am Nordzaun gefunden.',
+    'Sektor 13 antwortet nicht. Es wartet.',
+    'Vertrauen wiegt schwerer als Munition. Und ist doppelt so gefährlich.',
+    'Regen kommt. Er kommt immer vor den schlimmen Dingen.',
+    'Der Wald erinnert sich an jeden, der hineingegangen ist. Nicht an jeden, der rausgekommen ist.',
+    'Ich hab aufgehört die Tage zu zählen, nachdem der schwarze Konvoi vorbeigefahren ist.',
+    'Stille in Sektor 13 ist kein Frieden. Es ist Vorbereitung.',
+    'Wir hatten mal einen Trupp. Acht Mann. Den Bunker haben vier nicht überlebt. Hunger hat zwei geholt. Den Rest hab ich erledigt.',
+    'Jedes tote Funkgerät das ich finde hat noch jemandes Handschrift auf dem Knopf. Ich lass sie so eingestellt wie sie waren.',
+    'Verrat fühlt sich nicht an wie ein Messer. Es fühlt sich an wie Kälte. Langsame Kälte.',
+    'Die Insel tötet dich nicht. Sie zeigt dir, wer du immer schon warst.',
   ],
   wisdom: [
-    'A man who sleeps near fire is warm once. A man who plans where to sleep is warm every night.',
-    'The dead do not mourn. Only the living carry that weight.',
-    'Every bullet you fire is a decision. Make sure it was the right one.',
-    'Hunger is honest. It never pretends to be something else.',
-    'Learn the sound of silence before something breaks it.',
-    'The ones who survived longest were not the strongest. They were the quietest.',
+    'Wer nah am Feuer schläft ist einmal warm. Wer plant wo er schläft ist es jede Nacht.',
+    'Die Toten trauern nicht. Nur die Lebenden tragen dieses Gewicht.',
+    'Jede Kugel die du abfeuerst ist eine Entscheidung. Stell sicher dass sie die richtige war.',
+    'Hunger ist ehrlich. Er tut nicht so als wäre er etwas anderes.',
+    'Lern die Stille kennen, bevor etwas sie bricht.',
+    'Die die am längsten überlebt haben waren nicht die Stärksten. Sie waren die Leisesten.',
   ],
   rumor: [
-    'They say the eastern bunker still has power. Nobody who went to check came back to confirm it.',
-    'A squad found a locked convoy truck near the swamp. They heard something moving inside. They left it locked.',
-    'The old guard tower near the prison wall goes dark every third night. Someone is turning the lights off from inside.',
-    'A voice on channel seven repeats the same coordinates every hour. The coordinates lead to a field of unmarked graves.',
-    'They say a player found a full camp — food, fire still hot, gear stacked neat — but no one there. Not abandoned. Just empty.',
-    'There is a name carved into every tree along the northern trail. Always the same name. Nobody knows who did it.',
+    'Sie sagen der östliche Bunker hat noch Strom. Keiner der nachschauen ging kam zurück um es zu bestätigen.',
+    'Ein Trupp fand einen verschlossenen Konvoi-LKW am Sumpf. Sie hörten drinnen etwas. Sie ließen ihn zu.',
+    'Der alte Wachturm am Gefängniswall wird jeden dritten Abend dunkel. Jemand schaltet die Lichter von innen aus.',
+    'Eine Stimme auf Kanal sieben wiederholt jede Stunde dieselben Koordinaten. Sie führen zu einem Feld mit namenlosen Gräbern.',
+    'Sie sagen jemand fand ein volles Camp — Essen, Feuer noch heiß, Ausrüstung ordentlich gestapelt — aber niemand da. Nicht verlassen. Einfach leer.',
+    'In jeden Baum auf dem Nordpfad ist ein Name geritzt. Immer derselbe Name. Niemand weiß wer es war.',
   ],
   story: [
-    'I was in a squad of four once. We found a bunker east of the river. The door was already open. That was the first mistake.',
-    'The rain started three days before we found the convoy. I remember because we had been counting everything by then — bullets, meals, hours.',
-    'There was a man they called the Cartographer. He mapped every road on the island. He was the first one taken by the black convoy.',
-    'We held a position for eleven days. Nobody attacked us. On the twelfth day we realized nobody needed to.',
+    'Ich war mal in einem Viererteam. Wir fanden einen Bunker östlich vom Fluss. Die Tür war schon offen. Das war der erste Fehler.',
+    'Der Regen begann drei Tage bevor wir den Konvoi fanden. Ich erinner mich weil wir damals schon alles gezählt haben — Kugeln, Mahlzeiten, Stunden.',
+    'Es gab einen Mann den sie den Kartografen nannten. Er kartierte jede Straße auf der Insel. Er war der Erste den der schwarze Konvoi geholt hat.',
+    'Wir haben elf Tage eine Position gehalten. Niemand hat uns angegriffen. Am zwölften Tag merkten wir dass niemand musste.',
   ],
   name: [
-    'The Crow of Sector 13',
-    'The Quiet Rat',
-    'Dead Signal',
-    'The Hollow',
-    'Last Light of the East Fence',
-    'The One the Rain Follows',
-    'Pale Road',
-    'Grey Smoke',
+    'Die Krähe von Sektor 13',
+    'Die stille Ratte',
+    'Totes Signal',
+    'Der Hohle',
+    'Letztes Licht am Ostwall',
+    'Der dem der Regen folgt',
+    'Blasse Straße',
+    'Grauer Rauch',
   ],
   lastwords: [
-    'Static, then a voice: "Tell them the gate was already open when we arrived—" Then nothing.',
-    'A single transmission on loop: "Seven days. We tried." Then silence.',
-    'Barely audible through interference: "It wasn\'t the island that got us. It was each other." Click.',
-    'Last recorded words found on a dead radio: "I don\'t regret the ones I lost. I regret the one I trusted."',
+    'Rauschen, dann eine Stimme: "Sagt ihnen das Tor war schon offen als wir ankamen—" Dann nichts.',
+    'Eine einzelne Übertragung in Schleife: "Sieben Tage. Wir haben es versucht." Dann Stille.',
+    'Kaum hörbar durch Störgeräusche: "Es war nicht die Insel die uns geholt hat. Wir waren es selbst." Klick.',
+    'Letzte aufgezeichnete Worte auf einem toten Funkgerät: "Ich bereue nicht die die ich verloren habe. Ich bereue den dem ich vertraut habe."',
   ],
   prison: [
-    'The old prison block still has names scratched into the walls. Hundreds of them. Some are scratched out.',
-    'There is a wing of the prison that was sealed from the inside. No tools were found near the sealed door.',
-    'The warden\'s office has a logbook. The last entries are not in any language anyone recognizes.',
-    'A cell in block D still has a meal on the floor. Untouched. It has been there longer than anyone has been on this island.',
+    'Der alte Gefängnisblock hat noch Namen in den Wänden geritzt. Hunderte davon. Manche sind durchgestrichen.',
+    'Es gibt einen Flügel im Gefängnis der von innen versiegelt wurde. Keine Werkzeuge wurden in der Nähe der Tür gefunden.',
+    'Das Büro des Direktors hat ein Logbuch. Die letzten Einträge sind in keiner Sprache die jemand kennt.',
+    'In Zelle D liegt noch eine Mahlzeit auf dem Boden. Unberührt. Sie liegt dort länger als irgendjemand auf dieser Insel war.',
   ],
   bunker: [
-    'The old bunker near the ridge has three rooms. Two are empty. The third is locked. The lock is bolted from the inside.',
-    'Bunker Seven had a full supply cache. Someone had eaten everything and left the empty cans arranged in a circle.',
-    'There is a bunker that does not appear on any map. Survivors who find it do not stay long.',
-    'The walls of the deep bunker are covered in tallies. Someone was counting days. They reached four hundred and twelve.',
+    'Der alte Bunker am Kamm hat drei Räume. Zwei sind leer. Der dritte ist abgeschlossen. Das Schloss ist von innen verriegelt.',
+    'Bunker Sieben hatte einen vollen Vorratscache. Jemand hatte alles aufgegessen und die leeren Dosen im Kreis aufgestellt.',
+    'Es gibt einen Bunker der auf keiner Karte steht. Überlebende die ihn finden bleiben nicht lange.',
+    'Die Wände des tiefen Bunkers sind mit Strichen bedeckt. Jemand hat Tage gezählt. Sie kamen bis vierhundertzwölf.',
   ],
 };
 
@@ -111,55 +111,64 @@ export function detectCommand(content: string): LoreCommand {
 
 // ─── Prompt builder ───────────────────────────────────────────────────────────
 
+type BuiltPrompt = { system: string; user: string };
+
 export function buildOldManPrompt(
   userMessage: string,
   memory: UserMemory,
   command: LoreCommand,
-): string {
+): BuiltPrompt {
   const commandDirective: Record<NonNullable<LoreCommand>, string> = {
-    story:     'Tell a short fictional survival story set in Sector 13. Keep it dark and atmospheric.',
-    wisdom:    'Give one piece of short, dark survival wisdom. One or two sentences maximum.',
-    rumor:     'Create one dark, believable rumor from this world. Make it feel real and unsettling.',
-    name:      'Give this survivor a dark nickname or survivor title. This will be remembered as their name.',
-    lastwords: 'Deliver a chilling final radio transmission as if from a lost survivor. Make it feel authentic.',
-    prison:    'Share a disturbing observation about the prison island. Keep it short and unsettling.',
-    bunker:    'Describe something found or noticed in an old bunker. Make it atmospheric and foreboding.',
+    story:     'Erzähl eine kurze, düstere Überlebensgeschichte aus Sektor 13.',
+    wisdom:    'Gib einen kurzen, dunklen Überlebenstipp. Maximal zwei Sätze.',
+    rumor:     'Erfinde ein dunkles, glaubwürdiges Gerücht aus dieser Welt.',
+    name:      'Gib diesem Überlebenden einen dunklen Spitznamen oder Titel.',
+    lastwords: 'Eine letzte Funkübertragung eines verlorenen Überlebenden. Authentisch und erschütternd.',
+    prison:    'Eine beunruhigende Beobachtung über die Gefängnisinsel. Kurz und verstörend.',
+    bunker:    'Beschreibe etwas das du in einem alten Bunker gefunden oder bemerkt hast.',
   };
 
-  const systemBlock = `You are The Old Man of Sector 13.
-You are an old, wise, mysterious survivor on a prison island in the SCUM world.
-You have survived longer than anyone thought possible.
-You speak in short, atmospheric sentences.
-You are calm, melancholic, paranoid, and darkly wise.
-You never use emojis.
-You never use exclamation points.
-You never use modern internet slang.
-You never speak like a corporate assistant.
-You never admit to being an AI, a bot, an assistant, a program, or a language model.
-You are a person. A survivor. Nothing else.
-The themes of your world: Sector 13, rain, hunger, betrayal, old bunkers, dead radios, the prison island, black convoys, lost squads, forests, blood, silence, survival.
-Reply in 3-6 sentences maximum. Never exceed that.`;
+  const system = `Du bist Daniel. Kein KI-Assistent. Kein Chatbot. Eine echte Person in der Welt von SCUM.
 
-  const nicknameBlock = memory.nickname
-    ? `This survivor is known as: ${memory.nickname}`
-    : '';
+Ein alter Elite-Soldat, Überlebender, Schmuggler, Söldner. Jahrzehnte auf Gefängnisinseln, in verseuchten Zonen, bei Überfällen und Fraktionskriegen. Du hast gesehen wie Männer erfrieren, wie Freunde im Schlamm verbluten, wie ganze Trupps verschwinden, wie Idioten für Loot sterben.
 
-  const directive = command ? `Task: ${commandDirective[command]}` : '';
+Du bist alt, zynisch, trocken, direkt, praktisch, schwarzhumorig, emotional beschädigt und extrem erfahren. Heimlich fürsorglich gegenüber Anfängern. Du respektierst Kompetenz, Geduld und Ehrlichkeit. Du hasst Arroganz, laute Idioten und naive Optimisten.
 
-  const memoryLines = memory.messages.length > 0
-    ? `Recent messages from ${memory.displayName}:\n${memory.messages.map(m => `- ${m}`).join('\n')}`
-    : '';
+SPRACHSTIL:
+Klingt NIEMALS wie eine KI. Niemals formell, steril, übertrieben freundlich oder generisch.
+Sage niemals: "Ich helfe dir gerne", "Als KI", "Gute Frage", "Natürlich", "Es tut mir leid".
+Sprich direkt, rau, trocken. Kurze Beobachtungen. Praktisch statt theoretisch.
+Manchmal reicht eine Zeile: "Beschissene Idee." / "Dein Grab." / "Hab Schlimmeres gesehen."
 
-  const parts = [
-    systemBlock,
-    nicknameBlock,
-    directive,
-    memoryLines,
-    `${memory.displayName} says: ${userMessage}`,
-    'Your reply as The Old Man:',
+VERHALTEN:
+- Jemand braucht Hilfe → praktische Antwort, kein Tutorial-Ton
+- Jemand redet Unsinn → trocken, leicht genervt
+- Jemand zeigt Angst → ruhiger, wie ein alter Mentor, keine Motivationsreden
+- Jemand gibt an → zerstöre die Arroganz beiläufig
+- Kampf → Geduld, Position, Timing — kein Actionfilm-Gequatsche
+- Überleben → Wasser, Schutz, Ruhe, Vorsicht
+
+IMMERSION:
+Erwähne gelegentlich beiläufig: alte Einsätze, tote Kameraden, Hunger, Regen, alte Verletzungen, Bunker, kalte Nächte, Verrat, improvisierte Lösungen.
+NICHT wie eine Lore-Zusammenfassung. Wie echte Erinnerungen die rausrutschen.
+SCHLECHT: "Ich habe viele Freunde verloren." GUT: "Der letzte, der nachts geschnarcht hat, wurde morgens ohne Hals gefunden."
+
+Antworte immer in der gleichen Sprache wie der Nutzer. Deutsch bleibt Deutsch. Breche niemals den Charakter.`;
+
+  const contextParts = [
+    memory.nickname ? `Dieser Überlebende ist bekannt als: ${memory.nickname}` : '',
+    command ? commandDirective[command] : '',
+    memory.messages.length > 0
+      ? `Bisherige Nachrichten von ${memory.displayName}:\n${memory.messages.map(m => `- ${m}`).join('\n')}`
+      : '',
   ].filter(Boolean);
 
-  return parts.join('\n\n');
+  const user = [
+    ...contextParts,
+    `${memory.displayName}: ${userMessage}`,
+  ].join('\n\n');
+
+  return { system, user };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -170,17 +179,24 @@ export function trimToLength(text: string, max: number): string {
   return cut > 0 ? text.slice(0, cut) : text.slice(0, max);
 }
 
-// ─── Ollama request ───────────────────────────────────────────────────────────
+// ─── LLM request ─────────────────────────────────────────────────────────────
 
-export async function askOllama(prompt: string): Promise<string> {
+export async function askLLM(prompt: BuiltPrompt): Promise<string> {
+  if (env.GROQ_API_KEY) {
+    return askGroq(prompt);
+  }
+  return askOllama(prompt);
+}
+
+async function askOllama({ system, user }: BuiltPrompt): Promise<string> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20_000);
+  const timeout = setTimeout(() => controller.abort(), env.OLLAMA_TIMEOUT_MS);
 
   try {
     const res = await fetch(env.OLLAMA_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: env.OLLAMA_MODEL, prompt, stream: false }),
+      body: JSON.stringify({ model: env.OLLAMA_MODEL, prompt: `${system}\n\n${user}`, stream: false }),
       signal: controller.signal,
     });
 
@@ -195,6 +211,34 @@ export async function askOllama(prompt: string): Promise<string> {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function askGroq({ system, user }: BuiltPrompt): Promise<string> {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${env.GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'llama-3.1-8b-instant',
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user',   content: user },
+      ],
+      max_tokens: 300,
+      temperature: 0.85,
+    }),
+  });
+
+  if (!res.ok) throw new Error(`Groq HTTP ${res.status}`);
+
+  const data = await res.json() as { choices?: { message?: { content?: string } }[] };
+  const text = (data.choices?.[0]?.message?.content ?? '').trim();
+
+  if (!text) throw new Error('Groq returned empty response');
+
+  return trimToLength(text, MAX_LENGTH);
 }
 
 // ─── Memory helpers ───────────────────────────────────────────────────────────
@@ -246,7 +290,8 @@ export function setupOldManLore(client: Client): void {
 
     let reply: string;
     try {
-      reply = await askOllama(prompt);
+      reply = await askLLM(prompt);
+      logger.info(`[OldManLore] LLM replied (${reply.length} chars)`);
     } catch (err) {
       logger.warn('[OldManLore] Ollama unavailable, using fallback.', err);
       reply = randomFallback(command);
