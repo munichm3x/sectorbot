@@ -7,8 +7,11 @@ import {
 } from './client';
 import { setupOldManLore } from './features/oldManLore';
 import { setupChangelogDashboard } from './features/changelogDashboard';
+import { setupScumStatus } from './features/scumStatus/scumStatus.updater';
 import { changelogButtonHandler } from './interactions/buttons/changelogButtonHandler';
+import { scumStatusSetupHandler } from './interactions/buttons/setup/scumStatusSetupHandler';
 import { changelogModalHandler } from './interactions/modals/changelogModalHandler';
+import { scumStatusModalHandler } from './interactions/modals/scumStatusModals';
 
 // Commands
 import { setupCommand } from './commands/setup';
@@ -60,6 +63,7 @@ for (const handler of [
   ticketCloseHandler, ticketConfirmCloseHandler, ticketCancelCloseHandler,
   ticketClaimHandler, ticketAddPromptHandler, ticketRemovePromptHandler,
   acceptRulesHandler, setupButtonDispatcher, changelogButtonHandler,
+  scumStatusSetupHandler,
 ]) {
   buttonHandlers.set(handler.prefix, handler);
 }
@@ -73,6 +77,7 @@ modalHandlers.set(ticketAddModalHandler.prefix, ticketAddModalHandler);
 modalHandlers.set(ticketRemoveModalHandler.prefix, ticketRemoveModalHandler);
 modalHandlers.set(setupAddCategoryModal.prefix, setupAddCategoryModal);
 modalHandlers.set(changelogModalHandler.prefix, changelogModalHandler);
+modalHandlers.set(scumStatusModalHandler.prefix, scumStatusModalHandler);
 
 client.once('ready', (c) => {
   logger.info(`Bot online: ${c.user.tag} (${c.user.id})`);
@@ -82,4 +87,5 @@ client.once('ready', (c) => {
 initDb(env.DATABASE_PATH);
 setupOldManLore(client);
 setupChangelogDashboard(client);
+setupScumStatus(client);
 client.login(env.DISCORD_TOKEN);

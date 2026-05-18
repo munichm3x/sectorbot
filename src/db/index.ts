@@ -5,9 +5,9 @@ import {
   CREATE_TICKETS_TABLE, CREATE_PANELS_TABLE,
   CREATE_GUILD_CONFIG_TABLE, CREATE_GUILD_SUPPORT_ROLES_TABLE,
   CREATE_TICKET_CATEGORY_CONFIG_TABLE, CREATE_OLDMAN_CONFIG_TABLE,
-  CREATE_CHANGELOG_CONFIG_TABLE,
+  CREATE_CHANGELOG_CONFIG_TABLE, CREATE_SCUM_STATUS_CONFIG_TABLE,
 } from './schema';
-import type { Ticket, Panel, GuildConfig, TicketCategoryConfig, ChangelogConfig } from '../types';
+import type { Ticket, Panel, GuildConfig, TicketCategoryConfig, ChangelogConfig, ScumStatusConfig } from '../types';
 import { logger } from '../utils/logger';
 
 let db: Database.Database;
@@ -25,6 +25,7 @@ export function initDb(path: string): void {
   db.exec(CREATE_TICKET_CATEGORY_CONFIG_TABLE);
   db.exec(CREATE_OLDMAN_CONFIG_TABLE);
   db.exec(CREATE_CHANGELOG_CONFIG_TABLE);
+  db.exec(CREATE_SCUM_STATUS_CONFIG_TABLE);
   if (path !== ':memory:') logger.info(`Datenbank initialisiert: ${path}`);
 }
 
@@ -232,4 +233,58 @@ export function upsertChangelogConfig(
     dashboard_msg_id:  data.dashboard_msg_id  ?? null,
   });
   return getChangelogConfig(guildId)!;
+}
+
+export function getScumStatusConfig(guildId: string): ScumStatusConfig | undefined {
+  return getDb()
+    .prepare('SELECT * FROM scum_status_config WHERE guild_id = ?')
+    .get(guildId) as ScumStatusConfig | undefined;
+}
+
+export function upsertScumStatusConfig(
+  guildId: string,
+  data: Partial<Omit<ScumStatusConfig, 'guild_id' | 'created_at' | 'updated_at'>>,
+): ScumStatusConfig {
+  getDb().prepare(`
+    INSERT INTO scum_status_config (guild_id, enabled, channel_id, message_id, host, query_port, update_interval_secs)
+    VALUES (@guild_id, COALESCE(@enabled, 0), @channel_id, @message_id, @host, @query_port, COALESCE(@update_interval_secs, 60))
+    ON CONFLICT(guild_id) DO UPDATE SET
+      enabled               = COALESCE(@enabled,               enabled),
+      channel_id            = COALESCE(@channel_id,            channel_id),
+      message_id            = COALESCE(@message_id,            message_id),
+      host                  = COALESCE(@host,                  host),
+      query_port            = COALESCE(@query_port,            query_port),
+      update_interval_secs  = COALESCE(@update_interval_secs,  update_interval_secs),
+      updated_at            = datetime('now')
+  `).run({
+    guild_id:             guildId,
+    enabled:              data.enabled              ?? null,
+    channel_id:           data.channel_id           ?? null,
+    message_id:           data.message_id           ?? null,
+    host:                 data.host                 ?? null,
+    query_port:           data.query_port           ?? null,
+    update_interval_secs: data.update_interval_secs ?? null,
+  });
+  return getScumStatusConfig(guildId)!;
+}
+
+export function setScumStatusMessageId(guildId: string, messageId: string | null): void {
+  getDb()
+    .prepare(`UPDATE scum_status_config SET message_id = ?, updated_at = datetime('now') WHERE guild_id = ?`)
+    .run(messageId, guildId);
+}
+
+export function setScumStatusEnabled(guildId: string, enabled: boolean): void {
+  getDb()
+    .prepare(`UPDATE scum_status_config SET enabled = ?, updated_at = datetime('now') WHERE guild_id = ?`)
+    .run(enabled ? 1 : 0, guildId);
+}
+
+export function getAllActiveScumStatuses(): ScumStatusConfig[] {
+  return getDb()
+    .prepare(`
+      SELECT * FROM scum_status_config
+      WHERE enabled = 1 AND host IS NOT NULL AND channel_id IS NOT NULL
+    `)
+    .all() as ScumStatusConfig[];
 }
