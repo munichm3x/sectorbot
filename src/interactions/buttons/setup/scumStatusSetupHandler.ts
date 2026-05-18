@@ -126,8 +126,17 @@ export const scumStatusSetupHandler: ButtonHandler = {
         } catch { /* ignorieren */ }
       }
 
+      const channel = await guild.channels.fetch(config.channel_id).catch(() => null);
+      if (!channel?.isTextBased()) {
+        return interaction.editReply({ content: 'Channel nicht gefunden oder ungültig.', embeds: [], components: [] });
+      }
+
       setScumStatusMessageId(guildId, null);
       stopInterval(guildId);
+
+      const embed = buildStatusEmbed({ online: false });
+      const msg   = await channel.send({ embeds: [embed] });
+      setScumStatusMessageId(guildId, msg.id);
       startInterval(guildId);
 
       const updated = getScumStatusConfig(guildId);
