@@ -81,7 +81,7 @@ export const CREATE_CHANGELOG_CONFIG_TABLE = `
 export const CREATE_SCUM_STATUS_CONFIG_TABLE = `
   CREATE TABLE IF NOT EXISTS scum_status_config (
     guild_id              TEXT    PRIMARY KEY,
-    enabled               INTEGER NOT NULL DEFAULT 1,
+    enabled               INTEGER NOT NULL DEFAULT 0,
     channel_id            TEXT,
     message_id            TEXT,
     host                  TEXT,
