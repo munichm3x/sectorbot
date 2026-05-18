@@ -1,4 +1,4 @@
-import { GameDig } from 'gamedig';
+import Gamedig from 'gamedig';
 import { logger } from '../../utils/logger';
 
 export type QueryResult =
@@ -7,8 +7,8 @@ export type QueryResult =
 
 export async function queryServer(host: string, port: number): Promise<QueryResult> {
   try {
-    const state = await GameDig.query({
-      type: 'valve',  // SCUM verwendet Steam/Valve A2S-Protokoll ('scum' nicht in gamedig v5)
+    const state = await Gamedig.query({
+      type: 'scum',
       host,
       port,
     });
