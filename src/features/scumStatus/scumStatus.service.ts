@@ -7,7 +7,7 @@ export type QueryResult =
 
 export async function queryServer(host: string, port: number): Promise<QueryResult> {
   try {
-    const state = await Gamedig.query({
+    const state = await Gamedig({
       type: 'scum',
       host,
       port,

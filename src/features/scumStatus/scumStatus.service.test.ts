@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockQuery = vi.hoisted(() => vi.fn());
-vi.mock('gamedig', () => ({ default: { query: mockQuery } }));
+vi.mock('gamedig', () => ({ default: mockQuery }));
 
 import { queryServer } from './scumStatus.service';
 

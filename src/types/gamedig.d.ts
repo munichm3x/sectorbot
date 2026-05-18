@@ -17,9 +17,7 @@ declare module 'gamedig' {
     requestRules?: boolean;
   }
 
-  namespace Gamedig {
-    function query(options: QueryOptions): Promise<QueryResult>;
-  }
+  function Gamedig(options: QueryOptions): Promise<QueryResult>;
 
   export = Gamedig;
 }
