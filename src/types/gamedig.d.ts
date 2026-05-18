@@ -17,7 +17,9 @@ declare module 'gamedig' {
     requestRules?: boolean;
   }
 
-  function Gamedig(options: QueryOptions): Promise<QueryResult>;
+  class Gamedig {
+    static query(options: QueryOptions): Promise<QueryResult>;
+  }
 
   export = Gamedig;
 }
