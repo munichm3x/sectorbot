@@ -46,6 +46,13 @@ export function stopGuildInterval(guildId: string): void {
   if (existing) { clearInterval(existing); activeIntervals.delete(guildId); }
 }
 
+/** Startet das Interval für eine Guild neu, ohne den Client explizit übergeben zu müssen.
+ *  Setzt voraus, dass setupStreamerChecker() bereits aufgerufen wurde. */
+export function restartGuildInterval(guildId: string): void {
+  if (!_client) return;
+  startGuildInterval(_client, guildId);
+}
+
 // ── Check-Logik ───────────────────────────────────────────────────────────────
 
 async function runGuildCheck(guildId: string): Promise<void> {

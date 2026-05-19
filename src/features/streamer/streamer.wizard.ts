@@ -2,6 +2,7 @@
 import type { ButtonInteraction, RoleSelectMenuInteraction, ChannelSelectMenuInteraction, ModalSubmitInteraction } from 'discord.js';
 import { replyError } from '../../utils/errors';
 import { upsertStreamerConfig, getStreamerConfig, countStreamers } from './streamer.db';
+import { restartGuildInterval } from './streamer.checker';
 import {
   buildWizardStep2, buildWizardStep3, buildWizardStep4,
   buildWizardStep5, buildWizardStep6, buildWizardStep7,
@@ -159,6 +160,8 @@ async function finishWizard(
   });
 
   clearWizardState(guildId, userId);
+
+  if (enabled) restartGuildInterval(guildId);
 
   const config = getStreamerConfig(guildId)!;
   const counts = countStreamers(guildId);

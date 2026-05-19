@@ -299,6 +299,18 @@ export async function handleDashboardButton(
     return;
   }
 
+  if (action === 'manage:list_prev') {
+    const page = /^\d+$/.test(extra) ? parseInt(extra, 10) : 0;
+    await handleStreamerList(interaction, guildId, userId, Math.max(0, page - 1));
+    return;
+  }
+
+  if (action === 'manage:list_next') {
+    const page = /^\d+$/.test(extra) ? parseInt(extra, 10) : 0;
+    await handleStreamerList(interaction, guildId, userId, page + 1);
+    return;
+  }
+
   if (action === 'manage:sync') {
     await handleSync(interaction, guildId, userId);
     return;

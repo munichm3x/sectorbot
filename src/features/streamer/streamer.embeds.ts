@@ -327,8 +327,10 @@ export function buildStreamerListComponents(
 ): ActionRowBuilder<ButtonBuilder>[] {
   return [
     new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(sid('manage:list', guildId, userId, String(Math.max(0, page - 1)))).setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(page === 0),
-      new ButtonBuilder().setCustomId(sid('manage:list', guildId, userId, String(Math.min(totalPages - 1, page + 1)))).setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(page >= totalPages - 1),
+      // Use distinct action names for prev/next to avoid duplicate custom IDs
+      // when both are disabled (e.g. single page: both would resolve to page 0).
+      new ButtonBuilder().setCustomId(sid('manage:list_prev', guildId, userId, String(page))).setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(page === 0),
+      new ButtonBuilder().setCustomId(sid('manage:list_next', guildId, userId, String(page))).setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(page >= totalPages - 1),
       new ButtonBuilder().setCustomId(sid('dashboard:refresh', guildId, userId)).setLabel('↩ Dashboard').setStyle(ButtonStyle.Primary),
     ),
   ];
