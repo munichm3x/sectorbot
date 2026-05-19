@@ -527,16 +527,15 @@ export async function handleDashboardUserSelect(
   payload: string,
 ): Promise<void> {
   if (!interaction.inCachedGuild()) return;
-  const asButton = interaction as unknown as ButtonInteraction;
-  if (!isAdmin(interaction.member)) { await replyError(asButton, 'Keine Berechtigung.'); return; }
+  if (!isAdmin(interaction.member)) { await replyError(interaction, 'Keine Berechtigung.'); return; }
   const parts   = payload.split(':');
   const userId  = parts[parts.length - 1];
   const guildId = parts[parts.length - 2];
-  if (!securityCheck(interaction, userId)) { await replyError(asButton, 'Du hast dieses Dashboard nicht geöffnet.'); return; }
+  if (!securityCheck(interaction, userId)) { await replyError(interaction, 'Du hast dieses Dashboard nicht geöffnet.'); return; }
 
   const targetUser = interaction.users.first();
-  if (!targetUser) { await replyError(asButton, 'Keinen User ausgewählt.'); return; }
-  if (targetUser.bot) { await replyError(asButton, 'Bots können nicht als Streamer eingetragen werden.'); return; }
+  if (!targetUser) { await replyError(interaction, 'Keinen User ausgewählt.'); return; }
+  if (targetUser.bot) { await replyError(interaction, 'Bots können nicht als Streamer eingetragen werden.'); return; }
 
   await interaction.showModal(buildStreamerAddModal(guildId, userId, targetUser.id));
 }

@@ -5,6 +5,7 @@ import type {
   StringSelectMenuInteraction,
   ChannelSelectMenuInteraction,
   RoleSelectMenuInteraction,
+  UserSelectMenuInteraction,
   ModalSubmitInteraction,
 } from 'discord.js';
 import { SECTOR_COLORS } from '../ui/brand';
@@ -15,6 +16,7 @@ type RepliableInteraction =
   | StringSelectMenuInteraction
   | ChannelSelectMenuInteraction
   | RoleSelectMenuInteraction
+  | UserSelectMenuInteraction
   | ModalSubmitInteraction;
 
 export async function replyError(interaction: RepliableInteraction, message: string): Promise<void> {
