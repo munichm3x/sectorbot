@@ -66,7 +66,7 @@ async function updateDashboard(guildId: string): Promise<void> {
     }
 
     const result = await queryServer(config.host, config.query_port);
-    const embed  = buildStatusEmbed(result);
+    const embed  = buildStatusEmbed(result, config.host, config.query_port);
 
     let msgId = config.message_id ?? null;
 

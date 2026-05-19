@@ -19,5 +19,6 @@ export const env = {
   OLLAMA_TIMEOUT_MS:   (() => { const n = Number(process.env.OLLAMA_TIMEOUT_MS);   return Number.isFinite(n) && n >= 0 ? n : 60000; })(),
   GROQ_API_KEY:        process.env.GROQ_API_KEY ?? '',
   STEAM_API_KEY:       process.env.STEAM_API_KEY ?? '',
-  RULES_BANNER_URL:    process.env.RULES_BANNER_URL ?? '',
+  RULES_BANNER_URL:      process.env.RULES_BANNER_URL ?? '',
+  SCUM_STATUS_LOGO_URL:  process.env.SCUM_STATUS_LOGO_URL ?? '',
 } as const;
