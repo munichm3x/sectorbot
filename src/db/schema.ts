@@ -91,3 +91,55 @@ export const CREATE_SCUM_STATUS_CONFIG_TABLE = `
     updated_at            TEXT    NOT NULL DEFAULT (datetime('now'))
   )
 `;
+
+export const CREATE_STREAMER_CONFIG_TABLE = `
+  CREATE TABLE IF NOT EXISTS streamer_config (
+    guild_id                TEXT    PRIMARY KEY,
+    enabled                 INTEGER NOT NULL DEFAULT 0,
+    setup_completed         INTEGER NOT NULL DEFAULT 0,
+    streamer_role_id        TEXT    NULL,
+    live_channel_id         TEXT    NULL,
+    check_interval_seconds  INTEGER NOT NULL DEFAULT 120,
+    twitch_client_id        TEXT    NULL,
+    twitch_client_secret    TEXT    NULL,
+    youtube_api_key         TEXT    NULL,
+    announcement_ping_type  TEXT    NOT NULL DEFAULT 'none',
+    last_successful_check   TEXT    NULL,
+    last_error              TEXT    NULL,
+    created_at              TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at              TEXT    NOT NULL DEFAULT (datetime('now'))
+  )
+`;
+
+export const CREATE_STREAMERS_TABLE = `
+  CREATE TABLE IF NOT EXISTS streamers (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id           TEXT    NOT NULL,
+    discord_user_id    TEXT    NOT NULL,
+    twitch_username    TEXT    NULL,
+    youtube_channel_id TEXT    NULL,
+    enabled            INTEGER NOT NULL DEFAULT 1,
+    created_at         TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at         TEXT    NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(guild_id, discord_user_id)
+  )
+`;
+
+export const CREATE_STREAM_LIVE_STATES_TABLE = `
+  CREATE TABLE IF NOT EXISTS stream_live_states (
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id                TEXT    NOT NULL,
+    discord_user_id         TEXT    NOT NULL,
+    platform                TEXT    NOT NULL,
+    is_live                 INTEGER NOT NULL DEFAULT 0,
+    last_stream_id          TEXT    NULL,
+    last_live_url           TEXT    NULL,
+    last_live_title         TEXT    NULL,
+    announcement_message_id TEXT    NULL,
+    last_checked_at         TEXT    NULL,
+    last_announced_at       TEXT    NULL,
+    created_at              TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at              TEXT    NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(guild_id, discord_user_id, platform)
+  )
+`;

@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits, Collection } from 'discord.js';
 import type {
   Command, ButtonHandler, SelectMenuHandler,
   ChannelSelectMenuHandler, RoleSelectMenuHandler, ModalHandler,
+  UserSelectMenuHandler,
 } from './types';
 import { parseId } from './utils/ids';
 import { replyError } from './utils/errors';
@@ -22,6 +23,7 @@ export const selectMenuHandlers = new Map<string, SelectMenuHandler>();
 export const channelSelectHandlers = new Map<string, ChannelSelectMenuHandler>();
 export const roleSelectHandlers = new Map<string, RoleSelectMenuHandler>();
 export const modalHandlers = new Map<string, ModalHandler>();
+export const userSelectHandlers = new Map<string, UserSelectMenuHandler>();
 
 client.on('interactionCreate', async (interaction) => {
   try {
@@ -59,6 +61,14 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.isRoleSelectMenu()) {
       const { prefix, payload } = parseId(interaction.customId);
       const handler = roleSelectHandlers.get(prefix);
+      if (!handler) return;
+      await handler.execute(interaction, payload);
+      return;
+    }
+
+    if (interaction.isUserSelectMenu()) {
+      const { prefix, payload } = parseId(interaction.customId);
+      const handler = userSelectHandlers.get(prefix);
       if (!handler) return;
       await handler.execute(interaction, payload);
       return;

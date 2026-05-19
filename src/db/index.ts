@@ -6,6 +6,9 @@ import {
   CREATE_GUILD_CONFIG_TABLE, CREATE_GUILD_SUPPORT_ROLES_TABLE,
   CREATE_TICKET_CATEGORY_CONFIG_TABLE, CREATE_OLDMAN_CONFIG_TABLE,
   CREATE_CHANGELOG_CONFIG_TABLE, CREATE_SCUM_STATUS_CONFIG_TABLE,
+  CREATE_STREAMER_CONFIG_TABLE,
+  CREATE_STREAMERS_TABLE,
+  CREATE_STREAM_LIVE_STATES_TABLE,
 } from './schema';
 import type { Ticket, Panel, GuildConfig, TicketCategoryConfig, ChangelogConfig, ScumStatusConfig } from '../types';
 import { logger } from '../utils/logger';
@@ -26,6 +29,9 @@ export function initDb(path: string): void {
   db.exec(CREATE_OLDMAN_CONFIG_TABLE);
   db.exec(CREATE_CHANGELOG_CONFIG_TABLE);
   db.exec(CREATE_SCUM_STATUS_CONFIG_TABLE);
+  db.exec(CREATE_STREAMER_CONFIG_TABLE);
+  db.exec(CREATE_STREAMERS_TABLE);
+  db.exec(CREATE_STREAM_LIVE_STATES_TABLE);
   if (path !== ':memory:') logger.info(`Datenbank initialisiert: ${path}`);
 }
 

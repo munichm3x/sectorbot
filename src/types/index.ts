@@ -5,6 +5,7 @@ import type {
   ChannelSelectMenuInteraction,
   RoleSelectMenuInteraction,
   ModalSubmitInteraction,
+  UserSelectMenuInteraction,
   SlashCommandBuilder,
 } from 'discord.js';
 
@@ -100,6 +101,11 @@ export interface RoleSelectMenuHandler {
 export interface ModalHandler {
   prefix: string;
   execute: (interaction: ModalSubmitInteraction, payload: string) => Promise<unknown>;
+}
+
+export interface UserSelectMenuHandler {
+  prefix: string;
+  execute: (interaction: UserSelectMenuInteraction, payload: string) => Promise<unknown>;
 }
 
 export interface ChangelogConfig {
