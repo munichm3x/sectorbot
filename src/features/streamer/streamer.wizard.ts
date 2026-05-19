@@ -2,7 +2,6 @@
 import type { ButtonInteraction, RoleSelectMenuInteraction, ChannelSelectMenuInteraction, ModalSubmitInteraction } from 'discord.js';
 import { replyError } from '../../utils/errors';
 import { upsertStreamerConfig, getStreamerConfig, countStreamers } from './streamer.db';
-import { clearTwitchTokenCache } from './streamer.twitch';
 import {
   buildWizardStep2, buildWizardStep3, buildWizardStep4,
   buildWizardStep5, buildWizardStep6, buildWizardStep7,
@@ -232,7 +231,3 @@ function parseWizardButtonIds(payload: string): { action: string; guildId: strin
   const actionParts = parts.slice(1, parts.length - 2);
   return { action: actionParts.join(':'), guildId, userId };
 }
-
-// Suppress unused import warning — clearTwitchTokenCache is available for
-// use by handlers that update Twitch credentials post-wizard.
-void (clearTwitchTokenCache as unknown);
