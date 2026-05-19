@@ -19,6 +19,7 @@ import {
 import { BRAND, SECTOR_COLORS } from '../ui/brand';
 import type { GuildConfig, TicketCategoryConfig, DoctorCheck, ChangelogConfig, ScumStatusConfig } from '../types';
 import { IDS } from '../utils/ids';
+import { env } from '../config/env';
 
 // ─── PUBLIC / BRANDED ─────────────────────────────────────────────────────────
 
@@ -74,86 +75,53 @@ export function createTicketWelcomeEmbed(
 }
 
 export function createRulesEmbed(): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(SECTOR_COLORS.SECTOR_RED)
-    .setTitle('☣ SECTOR 13 Regelwerk')
+  const { RULES_BANNER_URL } = env;
+
+  const embed = new EmbedBuilder()
+    .setColor(0xA80000)
+    .setTitle('📜 SECTOR 13 • REGELWERK')
     .setDescription(
-      'Bitte lies das Regelwerk sorgfältig. Mit Klick auf den Button bestätigst du die Regeln ' +
-      'und erhältst deine Freischaltung für den Server.'
+      'Willkommen auf **SECTOR 13**.\n' +
+      'Bitte lies dir alle Regeln vollständig durch, bevor du spielst.\n\n' +
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+      '**§1 — Allgemeines Verhalten**\n' +
+      'Respektvoller Umgang mit allen Spielern ist Pflicht. Beleidigungen, toxisches Verhalten, Rassismus, Sexismus oder gezielte Provokationen sind verboten. Konflikte werden sachlich geklärt oder dem Team gemeldet.\n\n' +
+      '**§2 — Fair Play**\n' +
+      'Cheats, Hacks, Exploits, Duping, Bugusing oder jede Form von Manipulation sind strengstens verboten. Offensichtliche Spielfehler müssen dem Team gemeldet werden.\n\n' +
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+      '⚔️ **Teams & Gruppierungen**\n' +
+      'Ein Team darf aus maximal **4 Spielern** bestehen und muss eine gemeinsame Armbandfarbe jederzeit sichtbar tragen.\n' +
+      'Pro Team erlaubt: **1 Base** · **1 gesetzte Flagge** als offizielle Hauptbase.\n' +
+      'Dauerhafte Allianzen, Massenteams oder versteckte Kooperationen zwischen Teams sind verboten.\n\n' +
+      '🏹 **Einzelkämpfer**\n' +
+      'Die Farbe **Orange** ist ausschließlich Einzelkämpfern vorbehalten — keine festen Allianzen oder Gruppierungen.\n' +
+      'Einzelkämpfer dürfen: eigene Flagge · eigene Base · Fahrzeuge (inkl. Flugzeuge & Boote).\n' +
+      'Eine sichtbare orange Armbinde muss jederzeit getragen werden.\n\n' +
+      '💀 **PvP Regeln**\n' +
+      'PvP ist auf der gesamten Insel jederzeit erlaubt — es existieren keine Safezones.\n' +
+      'Verboten: Combat Logging · Streamsniping · Abuse-Verhalten · Umgehen von Spielmechaniken.\n' +
+      'Basen müssen regelkonform gebaut sein. Glitch-Building, unraidbare Konstruktionen und das Blockieren wichtiger Zugänge sind untersagt.\n\n' +
+      '🚗 **Fahrzeuge & Limits**\n' +
+      'Pro Spieler: **1 Fahrzeug** · **1 Motorrad**.\n' +
+      'Pro Base: **1 Flugzeug** · **2 Boote**.\n' +
+      'Das absichtliche Verstecken oder Horten über dem erlaubten Limit ist untersagt.\n\n' +
+      '☠️ **Permadeath**\n' +
+      'Bei **-10.000 Fame Points** tritt permanenter Charaktertod ein.\n' +
+      'Der Charakter gilt als verloren und muss vollständig neu erstellt werden.\n' +
+      'Eine Wiederherstellung durch das Team erfolgt nicht.\n\n' +
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+      '**§9 — Discord & Verhalten**\n' +
+      'Spam, Werbung, unnötige Pings, NSFW-Inhalte und störendes Verhalten sind verboten. Support ausschließlich über das Ticket-System.\n\n' +
+      '**§10–§12 — Sanktionen & Teamentscheid**\n' +
+      'Das Team behält sich das letzte Entscheidungsrecht vor. Verstöße können zu Verwarnungen, temporären Sperren, Kick oder permanentem Bann führen. Unwissenheit schützt nicht vor Konsequenzen. Regeländerungen gelten ab Veröffentlichung automatisch.',
     )
-    .addFields(
-      {
-        name: '1. Allgemeines Verhalten',
-        value:
-          'Behandle andere Spieler respektvoll. Beleidigungen, Belästigung, toxisches Verhalten, Rassismus, Sexismus, ' +
-          'politische Hetze oder Provokationen sind nicht erlaubt. Konflikte werden sachlich geklärt oder dem Team gemeldet.',
-        inline: false,
-      },
-      {
-        name: '2. Fair Play',
-        value:
-          'Cheats, Hacks, Exploits, Duping, Bugusing, Makros mit unfairen Vorteilen oder jede Form von Manipulation sind verboten. ' +
-          'Das Ausnutzen offensichtlicher Spielfehler muss gemeldet werden.',
-        inline: false,
-      },
-      {
-        name: '3. PvP & Konflikte',
-        value:
-          'PvP ist Teil von SCUM, muss aber fair bleiben. Combat Logging, absichtliches Abuse-Verhalten, Streamsniping ' +
-          'oder das Umgehen von Serverregeln zur Vorteilsnahme ist nicht erlaubt. Halte dich an die serverinternen PvP-/Safezone-Regeln.',
-        inline: false,
-      },
-      {
-        name: '4. Basebuilding & Raiding',
-        value:
-          'Basen müssen regelkonform gebaut werden. Das Blockieren wichtiger Zugänge, Glitch-Building, unraidbare Konstruktionen ' +
-          'oder das Ausnutzen von Baufehlern ist verboten. Raids sind nur im Rahmen der geltenden Serverregeln erlaubt.',
-        inline: false,
-      },
-      {
-        name: '5. Safezones & Trader',
-        value:
-          'In Safezones, Trader-Bereichen und geschützten Zonen gelten besondere Regeln. Camping, Provokation, ' +
-          'Exploit-Nutzung oder das Umgehen des Schutzsystems ist dort nicht erlaubt.',
-        inline: false,
-      },
-      {
-        name: '6. Fahrzeuge & Loot',
-        value:
-          'Fahrzeuge, Loot und Items sind Teil des Spiels, dürfen aber nicht durch Bugs, Duping oder Exploits vervielfältigt ' +
-          'oder gesichert werden. Bei Serverfehlern entscheidet das Team über Erstattung oder Entfernung.',
-        inline: false,
-      },
-      {
-        name: '7. Voice, Chat & Discord',
-        value:
-          'Spam, Werbung, unnötige Pings, private Streitigkeiten, NSFW-Inhalte oder störendes Verhalten im Discord sind nicht ' +
-          'erlaubt. Nutze die passenden Channels und halte Support-Anfragen im Ticket-System.',
-        inline: false,
-      },
-      {
-        name: '8. Team-Entscheidungen',
-        value:
-          'Anweisungen des Teams sind zu befolgen. Diskussionen über Sanktionen werden sachlich per Ticket geführt. ' +
-          'Öffentliche Provokationen oder Hetze gegen Teammitglieder werden nicht toleriert.',
-        inline: false,
-      },
-      {
-        name: '9. Sanktionen',
-        value:
-          'Regelverstöße können je nach Schwere zu Verwarnungen, temporären Sperren, Rollenentzug, Kick, Ban oder dauerhaftem ' +
-          'Ausschluss führen. Unwissenheit schützt nicht vor Konsequenzen.',
-        inline: false,
-      },
-      {
-        name: '10. Regeländerungen',
-        value:
-          'Das Team kann Regeln jederzeit anpassen, wenn es für Fairness, Serverstabilität oder Community-Schutz notwendig ist. ' +
-          'Mit der Nutzung des Servers akzeptierst du die jeweils aktuelle Version.',
-        inline: false,
-      },
-    )
-    .setFooter({ text: BRAND.FOOTER });
+    .setFooter({ text: 'SECTOR 13 • SCUM SERVER' });
+
+  if (RULES_BANNER_URL) {
+    embed.setImage(RULES_BANNER_URL);
+  }
+
+  return embed;
 }
 
 // ─── NEUTRAL / SYSTEM ─────────────────────────────────────────────────────────
