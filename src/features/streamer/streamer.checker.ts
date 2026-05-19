@@ -122,8 +122,9 @@ async function sendAnnouncement(
   platform: 'twitch' | 'youtube',
   result: LiveResult,
 ): Promise<void> {
-  const channel = await _client.channels.fetch(config.live_channel_id!).catch(() => null);
-  if (!channel?.isTextBased()) return;
+  const rawChannel = await _client.channels.fetch(config.live_channel_id!).catch(() => null);
+  if (!rawChannel?.isTextBased() || rawChannel.isDMBased()) return;
+  const channel = rawChannel;
 
   const embed      = buildAnnouncementEmbed(result, platform);
   const components = buildAnnouncementComponents(result.url!);
@@ -155,8 +156,9 @@ async function updateAnnouncement(
   if (!messageId) return;
 
   try {
-    const channel = await _client.channels.fetch(config.live_channel_id!).catch(() => null);
-    if (!channel?.isTextBased()) return;
+    const rawChannel = await _client.channels.fetch(config.live_channel_id!).catch(() => null);
+    if (!rawChannel?.isTextBased() || rawChannel.isDMBased()) return;
+    const channel = rawChannel;
 
     const msg = await channel.messages.fetch(messageId).catch(() => null);
     if (!msg) {

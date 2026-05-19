@@ -10,12 +10,14 @@ import { ticketRenameCommand } from './commands/ticket-rename';
 import { ticketClaimCommand } from './commands/ticket-claim';
 import { oldmanChannelCommand } from './commands/oldman-channel';
 import { clearCommand } from './commands/clear';
+import { streamerCommand } from './commands/streamer';
 import { logger } from './utils/logger';
 
 const commandList = [
   setupCommand, configCommand, doctorCommand,
   ticketCloseCommand, ticketAddCommand, ticketRemoveCommand,
   ticketRenameCommand, ticketClaimCommand, oldmanChannelCommand, clearCommand,
+  streamerCommand,
 ];
 
 const rest = new REST().setToken(env.DISCORD_TOKEN);

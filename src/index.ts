@@ -4,6 +4,7 @@ import { logger } from './utils/logger';
 import {
   client, commands, buttonHandlers, selectMenuHandlers,
   channelSelectHandlers, roleSelectHandlers, modalHandlers,
+  userSelectHandlers,
 } from './client';
 import { setupOldManLore } from './features/oldManLore';
 import { setupChangelogDashboard } from './features/changelogDashboard';
@@ -12,6 +13,19 @@ import { changelogButtonHandler } from './interactions/buttons/changelogButtonHa
 import { scumStatusSetupHandler } from './interactions/buttons/setup/scumStatusSetupHandler';
 import { changelogModalHandler } from './interactions/modals/changelogModalHandler';
 import { scumStatusModalHandler } from './interactions/modals/scumStatusModals';
+
+// Streamer
+import { streamerCommand } from './commands/streamer';
+import { setupStreamerChecker } from './features/streamer/streamer.checker';
+import {
+  handleWizardButton, handleWizardRoleSelect,
+  handleWizardChannelSelect, handleWizardModal,
+} from './features/streamer/streamer.wizard';
+import {
+  handleDashboardButton, handleDashboardRoleSelect,
+  handleDashboardChannelSelect, handleDashboardStringSelect,
+  handleDashboardUserSelect, handleDashboardModal,
+} from './features/streamer/streamer.dashboard';
 
 // Commands
 import { setupCommand } from './commands/setup';
@@ -52,6 +66,7 @@ for (const cmd of [
   setupCommand, configCommand, doctorCommand,
   ticketCloseCommand, ticketAddCommand, ticketRemoveCommand,
   ticketRenameCommand, ticketClaimCommand, oldmanChannelCommand, clearCommand,
+  streamerCommand,
 ]) {
   commands.set(cmd.data.name, cmd);
 }
@@ -80,6 +95,61 @@ modalHandlers.set(setupAddCategoryModal.prefix, setupAddCategoryModal);
 modalHandlers.set(changelogModalHandler.prefix, changelogModalHandler);
 modalHandlers.set(scumStatusModalHandler.prefix, scumStatusModalHandler);
 
+// Register streamer handlers (all under prefix 'str')
+buttonHandlers.set('str', {
+  prefix: 'str',
+  async execute(interaction, payload) {
+    if (payload.startsWith('wizard:')) {
+      return handleWizardButton(interaction, payload);
+    }
+    return handleDashboardButton(interaction, payload, client);
+  },
+});
+
+selectMenuHandlers.set('str', {
+  prefix: 'str',
+  async execute(interaction, payload) {
+    return handleDashboardStringSelect(interaction, payload);
+  },
+});
+
+roleSelectHandlers.set('str', {
+  prefix: 'str',
+  async execute(interaction, payload) {
+    if (payload.startsWith('wizard:role')) {
+      return handleWizardRoleSelect(interaction, payload);
+    }
+    return handleDashboardRoleSelect(interaction, payload);
+  },
+});
+
+channelSelectHandlers.set('str', {
+  prefix: 'str',
+  async execute(interaction, payload) {
+    if (payload.startsWith('wizard:channel')) {
+      return handleWizardChannelSelect(interaction, payload);
+    }
+    return handleDashboardChannelSelect(interaction, payload);
+  },
+});
+
+modalHandlers.set('str', {
+  prefix: 'str',
+  async execute(interaction, payload) {
+    if (payload.includes('_wizard')) {
+      return handleWizardModal(interaction, payload);
+    }
+    return handleDashboardModal(interaction, payload, client);
+  },
+});
+
+userSelectHandlers.set('str', {
+  prefix: 'str',
+  async execute(interaction, payload) {
+    return handleDashboardUserSelect(interaction, payload);
+  },
+});
+
 client.once('ready', (c) => {
   logger.info(`Bot online: ${c.user.tag} (${c.user.id})`);
   logger.info(`Commands: ${commands.size} | Buttons: ${buttonHandlers.size}`);
@@ -89,4 +159,5 @@ initDb(env.DATABASE_PATH);
 setupOldManLore(client);
 setupChangelogDashboard(client);
 setupScumStatus(client);
+setupStreamerChecker(client);
 client.login(env.DISCORD_TOKEN);
