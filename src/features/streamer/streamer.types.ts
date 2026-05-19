@@ -1,5 +1,7 @@
 // src/features/streamer/streamer.types.ts
 
+export type PingType = 'none' | 'role' | 'everyone' | 'here';
+
 export interface StreamerConfig {
   guild_id:                string;
   enabled:                 number;
@@ -10,7 +12,7 @@ export interface StreamerConfig {
   twitch_client_id:        string | null;
   twitch_client_secret:    string | null;
   youtube_api_key:         string | null;
-  announcement_ping_type:  'none' | 'role' | 'everyone' | 'here';
+  announcement_ping_type:  PingType;
   last_successful_check:   string | null;
   last_error:              string | null;
   created_at:              string;
@@ -55,8 +57,6 @@ export interface LiveResult {
   url?:         string;
   userName?:    string;
 }
-
-export type PingType = 'none' | 'role' | 'everyone' | 'here';
 
 // Wizard-State (in-memory, 30-min TTL)
 export interface WizardState {
