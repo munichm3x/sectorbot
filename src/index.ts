@@ -9,6 +9,7 @@ import {
 import { setupOldManLore } from './features/oldManLore';
 import { setupChangelogDashboard } from './features/changelogDashboard';
 import { setupScumStatus } from './features/scumStatus/scumStatus.updater';
+import { setupTicketAutoClose } from './features/ticketAutoClose';
 import { changelogButtonHandler } from './interactions/buttons/changelogButtonHandler';
 import { scumStatusSetupHandler } from './interactions/buttons/setup/scumStatusSetupHandler';
 import { changelogModalHandler } from './interactions/modals/changelogModalHandler';
@@ -160,4 +161,5 @@ setupOldManLore(client);
 setupChangelogDashboard(client);
 setupScumStatus(client);
 setupStreamerChecker(client);
+setupTicketAutoClose(client);
 client.login(env.DISCORD_TOKEN);

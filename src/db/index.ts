@@ -22,6 +22,8 @@ export function initDb(path: string): void {
   db = new Database(path);
   db.pragma('journal_mode = WAL');
   db.exec(CREATE_TICKETS_TABLE);
+  // Migration: add last_activity_at to existing tickets tables
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN last_activity_at INTEGER`); } catch { /* already exists */ }
   db.exec(CREATE_PANELS_TABLE);
   db.exec(CREATE_GUILD_CONFIG_TABLE);
   db.exec(CREATE_GUILD_SUPPORT_ROLES_TABLE);
@@ -66,6 +68,18 @@ export function findTicketByChannel(channelId: string): Ticket | undefined {
 export function closeTicket(channelId: string): void {
   getDb()
     .prepare(`UPDATE tickets SET status = 'closed', closed_at = ? WHERE channel_id = ?`)
+    .run(Math.floor(Date.now() / 1000), channelId);
+}
+
+export function getAllOpenTickets(): Ticket[] {
+  return getDb()
+    .prepare(`SELECT * FROM tickets WHERE status = 'open'`)
+    .all() as Ticket[];
+}
+
+export function touchTicketActivity(channelId: string): void {
+  getDb()
+    .prepare(`UPDATE tickets SET last_activity_at = ? WHERE channel_id = ? AND status = 'open'`)
     .run(Math.floor(Date.now() / 1000), channelId);
 }
 

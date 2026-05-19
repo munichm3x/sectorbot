@@ -3,6 +3,7 @@ import type { StringSelectMenuInteraction } from 'discord.js';
 import { findOpenTicketByUser } from '../../db/index';
 import { getConfig } from '../../services/guildConfigService';
 import { openTicket, TicketError, type TicketErrorCode } from '../../services/ticketService';
+import { startAutoCloseTimer } from '../../features/ticketAutoClose';
 import { IDS } from '../../utils/ids';
 import { logger } from '../../utils/logger';
 import { SECTOR_COLORS } from '../../ui/brand';
@@ -29,6 +30,7 @@ export const ticketCategoryHandler: SelectMenuHandler = {
 
     try {
       const { channelId, welcomeFailed } = await openTicket(interaction.guild, interaction.member, categoryKey);
+      startAutoCloseTimer(channelId);
       if (welcomeFailed) {
         await interaction.editReply({
           content: `✅ Dein Ticket wurde erstellt: <#${channelId}>\n⚠️ Die Startnachricht konnte nicht gesendet werden. Das Team wurde informiert.`,

@@ -19,6 +19,7 @@ export interface Ticket {
   claimed_by: string | null;
   created_at: number;
   closed_at: number | null;
+  last_activity_at?: number | null;
 }
 
 export interface Panel {
