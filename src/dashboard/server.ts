@@ -27,12 +27,21 @@ export function startDashboard(client: Client): void {
   app.set('trust proxy', 1);
 
   // Ensure session DB directory exists
-  mkdirSync('./data', { recursive: true });
+  const DATA_DIR = join(process.cwd(), 'data');
+  mkdirSync(DATA_DIR, { recursive: true });
+
+  // Guard against running with the default weak secret
+  if (env.DASHBOARD_SESSION_SECRET === 'change-me-in-production') {
+    logger.warn('[dashboard] WARNUNG: DASHBOARD_SESSION_SECRET ist der Standard-Wert. Bitte in .env setzen!');
+    if (env.NODE_ENV === 'production') {
+      throw new Error('DASHBOARD_SESSION_SECRET muss in Produktion gesetzt werden.');
+    }
+  }
 
   // Session store backed by SQLite (separate file from bot DB)
   app.use(session({
     // connect-sqlite3 typing is imperfect — cast as never
-    store: new SQLiteStore({ db: 'dashboard-sessions.db', dir: './data' }) as never,
+    store: new SQLiteStore({ db: 'dashboard-sessions.db', dir: DATA_DIR }) as never,
     secret:            env.DASHBOARD_SESSION_SECRET,
     resave:            false,
     saveUninitialized: false,
@@ -74,5 +83,12 @@ export function startDashboard(client: Client): void {
   app.listen(env.DASHBOARD_PORT, () => {
     logger.info(`[dashboard] Dashboard läuft auf Port ${env.DASHBOARD_PORT} — ${env.NODE_ENV}`);
     logger.info(`[dashboard] URL: http://localhost:${env.DASHBOARD_PORT}`);
+  }).on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      logger.error(`[dashboard] Port ${env.DASHBOARD_PORT} ist bereits belegt. Dashboard konnte nicht gestartet werden.`);
+    } else {
+      logger.error('[dashboard] Server-Fehler:', err.message);
+    }
+    // Do NOT re-throw — let the bot continue running without the dashboard
   });
 }
