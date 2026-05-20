@@ -426,8 +426,8 @@ export function setupOldManLore(client: Client): void {
           },
         ];
 
+        const t1 = Date.now();
         try {
-          const t1 = Date.now();
           reply = await askLLM(retryMessages);
           if (env.ANALYTICS_AI_ENABLED && message.guildId) {
             const provider = env.GROQ_API_KEY ? 'groq' : 'ollama';
@@ -439,7 +439,7 @@ export function setupOldManLore(client: Client): void {
           if (env.ANALYTICS_AI_ENABLED && message.guildId) {
             const provider = env.GROQ_API_KEY ? 'groq' : 'ollama';
             const model    = env.GROQ_API_KEY ? 'llama-3.3-70b-versatile' : env.OLLAMA_MODEL;
-            try { trackAiEvent({ guildId: message.guildId, provider, model, feature: 'oldman_retry', success: false, error: 'retry_failed' }); } catch { /* never crash bot */ }
+            try { trackAiEvent({ guildId: message.guildId, provider, model, feature: 'oldman_retry', success: false, error: 'retry_failed', durationMs: Date.now() - t1 }); } catch { /* never crash bot */ }
           }
           // Retry fehlgeschlagen → Fallback
           reply = randomFallback(command);
