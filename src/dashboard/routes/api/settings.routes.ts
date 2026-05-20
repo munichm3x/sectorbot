@@ -8,6 +8,13 @@ import {
   getChangelogConfig,
 } from '../../../db/index';
 
+const MASK = '••••••••';
+
+function maskField(value: string | null | undefined): string {
+  if (!value) return '';
+  return MASK;
+}
+
 export const settingsRouter = Router();
 settingsRouter.use(requirePermission(PermLevel.Admin));
 
@@ -21,6 +28,7 @@ settingsRouter.get('/', (req, res) => {
         supportRoles: getGuildSupportRoles(guildId),
         scumStatus:  getScumStatusConfig(guildId) ?? null,
         changelog:   getChangelogConfig(guildId)  ?? null,
+        streamer:    null,
       },
     });
   } catch { res.status(500).json({ success: false, error: 'Internal error' }); }

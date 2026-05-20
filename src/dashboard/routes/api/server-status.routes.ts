@@ -8,7 +8,7 @@ import { requirePermission, PermLevel } from '../../auth/middleware';
 export function serverStatusRouter(_client: Client): Router {
   const router = Router();
 
-  router.get('/', (req, res) => {
+  router.get('/', requirePermission(PermLevel.Admin), (req, res) => {
     try {
       const guildId = req.session.user!.guildId;
       res.json({ success: true, data: getScumStatusConfig(guildId) ?? null });

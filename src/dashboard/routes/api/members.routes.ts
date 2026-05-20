@@ -15,7 +15,6 @@ export function membersRouter(client: Client): Router {
       if (!guild) { res.status(404).json({ success: false, error: 'Guild not found' }); return; }
 
       const members = guild.members.cache
-        .filter(m => !m.user.bot)
         .map(m => ({
           id:          m.id,
           username:    m.user.username,
@@ -23,8 +22,10 @@ export function membersRouter(client: Client): Router {
           displayName: m.displayName,
           avatar:      m.user.displayAvatarURL({ size: 64 }),
           joinedAt:    m.joinedTimestamp,
+          isBot:       m.user.bot,
           roles:       m.roles.cache.filter(r => r.id !== guild.id).map(r => ({ id: r.id, name: r.name, color: r.hexColor })),
-        }));
+        }))
+        .filter(m => !m.isBot);
 
       const ticketCounts = getDb().prepare(`SELECT opener_user_id, COUNT(*) AS count FROM tickets WHERE guild_id = ? GROUP BY opener_user_id`).all(guildId) as Array<{ opener_user_id: string; count: number }>;
       const ticketMap = new Map(ticketCounts.map(r => [r.opener_user_id, r.count]));
