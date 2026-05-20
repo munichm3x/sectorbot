@@ -10,6 +10,16 @@ import {
   CREATE_STREAMERS_TABLE,
   CREATE_STREAM_LIVE_STATES_TABLE,
 } from './schema';
+import {
+  CREATE_SERVER_STATUS_HISTORY,
+  CREATE_DISCORD_MESSAGE_ACTIVITY,
+  CREATE_VOICE_SESSION_TEMP,
+  CREATE_DISCORD_VOICE_ACTIVITY,
+  CREATE_BOT_INTERACTION_EVENTS,
+  CREATE_AI_USAGE_EVENTS,
+  CREATE_MEMBER_EVENTS,
+  CREATE_DASHBOARD_AUDIT_LOGS,
+} from '../analytics/analytics.schema';
 import type { Ticket, Panel, GuildConfig, TicketCategoryConfig, ChangelogConfig, ScumStatusConfig } from '../types';
 import { logger } from '../utils/logger';
 
@@ -24,9 +34,13 @@ export function initDb(path: string): void {
   db.exec(CREATE_TICKETS_TABLE);
   // Migrations — safe to run on every start (ALTER TABLE is ignored if column exists)
   try { db.exec(`ALTER TABLE tickets ADD COLUMN last_activity_at INTEGER`);  } catch { /* already exists */ }
-  try { db.exec(`ALTER TABLE tickets ADD COLUMN closed_by TEXT`);            } catch { /* already exists */ }
-  try { db.exec(`ALTER TABLE tickets ADD COLUMN message_count INTEGER`);     } catch { /* already exists */ }
-  try { db.exec(`ALTER TABLE tickets ADD COLUMN summary TEXT`);              } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN closed_by TEXT`);                        } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN message_count INTEGER`);               } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN summary TEXT`);                         } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN archive_message_id TEXT`);             } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN archive_channel_id TEXT`);             } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN username_snapshot TEXT`);              } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN closed_by_username_snapshot TEXT`);    } catch { /* already exists */ }
   db.exec(CREATE_PANELS_TABLE);
   db.exec(CREATE_GUILD_CONFIG_TABLE);
   try { db.exec(`ALTER TABLE guild_config ADD COLUMN ticket_archive_channel_id TEXT`); } catch { /* already exists */ }
@@ -38,12 +52,26 @@ export function initDb(path: string): void {
   db.exec(CREATE_STREAMER_CONFIG_TABLE);
   db.exec(CREATE_STREAMERS_TABLE);
   db.exec(CREATE_STREAM_LIVE_STATES_TABLE);
+  db.exec(`CREATE TABLE IF NOT EXISTS msg_dedup (id TEXT PRIMARY KEY, ts INTEGER NOT NULL)`);
+  initAnalyticsDb();
   if (path !== ':memory:') logger.info(`Datenbank initialisiert: ${path}`);
 }
 
 export function getDb(): Database.Database {
   if (!db) throw new Error('Datenbank nicht initialisiert. initDb() aufrufen.');
   return db;
+}
+
+export function initAnalyticsDb(): void {
+  const database = getDb();
+  database.exec(CREATE_SERVER_STATUS_HISTORY);
+  database.exec(CREATE_DISCORD_MESSAGE_ACTIVITY);
+  database.exec(CREATE_VOICE_SESSION_TEMP);
+  database.exec(CREATE_DISCORD_VOICE_ACTIVITY);
+  database.exec(CREATE_BOT_INTERACTION_EVENTS);
+  database.exec(CREATE_AI_USAGE_EVENTS);
+  database.exec(CREATE_MEMBER_EVENTS);
+  database.exec(CREATE_DASHBOARD_AUDIT_LOGS);
 }
 
 export function createTicket(
@@ -328,4 +356,137 @@ export function getAllActiveScumStatuses(): ScumStatusConfig[] {
       WHERE enabled = 1 AND host IS NOT NULL AND channel_id IS NOT NULL
     `)
     .all() as ScumStatusConfig[];
+}
+
+// ─── Ticket Archive Queries ───────────────────────────────────────────────────
+
+export function setTicketArchiveInfo(
+  channelId:        string,
+  archiveMessageId: string,
+  archiveChannelId: string,
+  usernameSnapshot: string | null,
+  closedBySnapshot: string | null,
+): void {
+  getDb()
+    .prepare(`
+      UPDATE tickets
+      SET archive_message_id = ?, archive_channel_id = ?,
+          username_snapshot = ?, closed_by_username_snapshot = ?
+      WHERE channel_id = ?
+    `)
+    .run(archiveMessageId, archiveChannelId, usernameSnapshot, closedBySnapshot, channelId);
+}
+
+export function getRecentClosedTickets(
+  guildId: string,
+  limit:   number,
+  offset:  number,
+): Ticket[] {
+  return getDb()
+    .prepare(`
+      SELECT * FROM tickets
+      WHERE guild_id = ? AND status = 'closed'
+      ORDER BY COALESCE(closed_at, created_at) DESC
+      LIMIT ? OFFSET ?
+    `)
+    .all(guildId, limit, offset) as Ticket[];
+}
+
+export function countClosedTickets(guildId: string): number {
+  const row = getDb()
+    .prepare(`SELECT COUNT(*) AS n FROM tickets WHERE guild_id = ? AND status = 'closed'`)
+    .get(guildId) as { n: number };
+  return row.n;
+}
+
+export function searchClosedTickets(
+  guildId: string,
+  query:   string,
+  limit:   number,
+  offset:  number,
+): Ticket[] {
+  const like = `%${query}%`;
+  return getDb()
+    .prepare(`
+      SELECT * FROM tickets
+      WHERE guild_id = ? AND status = 'closed'
+        AND (
+          CAST(id AS TEXT)           LIKE ? OR
+          opener_user_id             LIKE ? OR
+          closed_by                  LIKE ? OR
+          category                   LIKE ? OR
+          summary                    LIKE ? OR
+          username_snapshot          LIKE ? OR
+          closed_by_username_snapshot LIKE ?
+        )
+      ORDER BY COALESCE(closed_at, created_at) DESC
+      LIMIT ? OFFSET ?
+    `)
+    .all(guildId, like, like, like, like, like, like, like, limit, offset) as Ticket[];
+}
+
+export function countSearchClosedTickets(guildId: string, query: string): number {
+  const like = `%${query}%`;
+  const row = getDb()
+    .prepare(`
+      SELECT COUNT(*) AS n FROM tickets
+      WHERE guild_id = ? AND status = 'closed'
+        AND (
+          CAST(id AS TEXT)           LIKE ? OR
+          opener_user_id             LIKE ? OR
+          closed_by                  LIKE ? OR
+          category                   LIKE ? OR
+          summary                    LIKE ? OR
+          username_snapshot          LIKE ? OR
+          closed_by_username_snapshot LIKE ?
+        )
+    `)
+    .get(guildId, like, like, like, like, like, like, like) as { n: number };
+  return row.n;
+}
+
+export function getClosedTicketById(id: number, guildId: string): Ticket | undefined {
+  return getDb()
+    .prepare(`SELECT * FROM tickets WHERE id = ? AND guild_id = ?`)
+    .get(id, guildId) as Ticket | undefined;
+}
+
+export function getTicketStats(guildId: string): {
+  total: number;
+  thisWeek: number;
+  thisMonth: number;
+  topCategory: string | null;
+  lastClosed: Ticket | undefined;
+} {
+  const now      = Math.floor(Date.now() / 1000);
+  const weekAgo  = now - 7  * 86400;
+  const monthAgo = now - 30 * 86400;
+  const db       = getDb();
+
+  const total     = (db.prepare(`SELECT COUNT(*) AS n FROM tickets WHERE guild_id = ? AND status = 'closed'`).get(guildId) as { n: number }).n;
+  const thisWeek  = (db.prepare(`SELECT COUNT(*) AS n FROM tickets WHERE guild_id = ? AND status = 'closed' AND COALESCE(closed_at, created_at) >= ?`).get(guildId, weekAgo)  as { n: number }).n;
+  const thisMonth = (db.prepare(`SELECT COUNT(*) AS n FROM tickets WHERE guild_id = ? AND status = 'closed' AND COALESCE(closed_at, created_at) >= ?`).get(guildId, monthAgo) as { n: number }).n;
+  const topRow    = db.prepare(`SELECT category, COUNT(*) AS n FROM tickets WHERE guild_id = ? AND status = 'closed' GROUP BY category ORDER BY n DESC LIMIT 1`).get(guildId) as { category: string } | undefined;
+  const lastClosed = db.prepare(`SELECT * FROM tickets WHERE guild_id = ? AND status = 'closed' ORDER BY COALESCE(closed_at, created_at) DESC LIMIT 1`).get(guildId) as Ticket | undefined;
+
+  return { total, thisWeek, thisMonth, topCategory: topRow?.category ?? null, lastClosed };
+}
+
+/**
+ * Atomisch eine Discord Message-ID beanspruchen.
+ * Gibt true zurück wenn diese Instanz die Nachricht als erste claimed hat.
+ * Gibt false zurück wenn eine andere Instanz sie bereits verarbeitet.
+ * Räumt Einträge älter als 5 Minuten bei jedem Aufruf auf.
+ */
+export function claimMessage(messageId: string): boolean {
+  const db = getDb();
+  try {
+    db.prepare(`INSERT INTO msg_dedup (id, ts) VALUES (?, ?)`).run(messageId, Date.now());
+    // Best-effort cleanup alter Einträge (> 5 Minuten)
+    db.prepare(`DELETE FROM msg_dedup WHERE ts < ?`).run(Date.now() - 300_000);
+    return true;
+  } catch {
+    // UNIQUE-Constraint verletzt → bereits von einer anderen Instanz verarbeitet
+    return false;
+  }
 }
