@@ -83,7 +83,7 @@ window['page-logs'] = {
   appendLogs(entries) {
     const out = document.getElementById('log-output');
     const filter = document.getElementById('log-level-filter')?.value ?? '';
-    if (!out) return;
+    if (!out) { this.stopStream(); return; }
     const filtered = filter ? entries.filter(e => e.level === filter) : entries;
     filtered.forEach(e => {
       const div = document.createElement('div');
@@ -97,7 +97,7 @@ window['page-logs'] = {
 
   logLine(e) {
     const colors = { info: 'var(--text-secondary)', warn: 'var(--warning)', error: 'var(--offline)', debug: 'var(--text-muted)' };
-    return `<div style="padding:.15rem 0;color:${colors[e.level]??'var(--text-secondary)'}"><span style="color:var(--text-muted)">${e.ts.slice(11,19)}</span> <span style="font-weight:600">[${e.level.toUpperCase()}]</span> ${e.message.replace(/</g,'&lt;')}</div>`;
+    return `<div style="padding:.15rem 0;color:${colors[e.level]??'var(--text-secondary)'}"><span style="color:var(--text-muted)">${(e.ts ?? '').slice(11,19) || '--:--:--'}</span> <span style="font-weight:600">[${e.level.toUpperCase()}]</span> ${e.message.replace(/</g,'&lt;')}</div>`;
   },
 
   async loadAudit() {
@@ -111,8 +111,8 @@ window['page-logs'] = {
           <tbody>${data.map(r => `
             <tr>
               <td class="dim mono" style="font-size:.75rem">${fmtDate(r.created_at)}</td>
-              <td class="dim mono" style="font-size:.75rem">${r.admin_user_id.slice(0,8)}…</td>
-              <td class="mono" style="font-size:.78rem">${r.action}</td>
+              <td class="dim mono" style="font-size:.75rem">${escapeHtml(r.admin_user_id.slice(0,8))}…</td>
+              <td class="mono" style="font-size:.78rem">${escapeHtml(r.action)}</td>
               <td><span class="badge ${r.success?'badge-online':'badge-offline'}">${r.success?'OK':'Fehler'}</span></td>
             </tr>
           `).join('')}</tbody>

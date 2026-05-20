@@ -18,7 +18,7 @@ window['page-settings'] = {
             <div class="grid-2">
               <div class="form-group">
                 <label class="form-label">Server Host / IP</label>
-                <input class="form-input" name="host" value="${scumStatus?.host ?? ''}">
+                <input class="form-input" name="host" value="${escapeHtml(scumStatus?.host ?? '')}">
               </div>
               <div class="form-group">
                 <label class="form-label">Query Port</label>

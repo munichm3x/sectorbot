@@ -45,13 +45,13 @@ window['page-members'] = {
           <tr>
             <td>
               <div style="display:flex;align-items:center;gap:.5rem">
-                <img src="${m.avatar}" style="width:24px;height:24px;border-radius:50%;background:var(--surface-raised)" onerror="this.style.display='none'">
-                <span>${m.displayName ?? m.username}</span>
+                <img src="${escapeHtml(m.avatar)}" style="width:24px;height:24px;border-radius:50%;background:var(--surface-raised)" onerror="this.style.display='none'">
+                <span>${escapeHtml(m.displayName ?? m.username)}</span>
               </div>
             </td>
             <td class="mono dim" style="font-size:.75rem">${m.id}</td>
             <td class="dim">${m.joinedAt ? fmtDate(m.joinedAt / 1000) : '—'}</td>
-            <td style="font-size:.75rem">${m.roles.slice(0,3).map(r => `<span class="badge badge-neutral" style="margin-right:.2rem">${r.name}</span>`).join('')}${m.roles.length > 3 ? `<span class="dim">+${m.roles.length-3}</span>` : ''}</td>
+            <td style="font-size:.75rem">${m.roles.slice(0,3).map(r => `<span class="badge badge-neutral" style="margin-right:.2rem">${escapeHtml(r.name)}</span>`).join('')}${m.roles.length > 3 ? `<span class="dim">+${m.roles.length-3}</span>` : ''}</td>
             <td class="dim">${m.ticketCount}</td>
           </tr>
         `).join('')}</tbody>

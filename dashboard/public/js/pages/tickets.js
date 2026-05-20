@@ -48,12 +48,12 @@ window['page-tickets'] = {
           <tbody>${tickets.map(t => `
             <tr style="cursor:pointer" onclick="window['page-tickets'].showDetail(${t.id})">
               <td class="mono dim">${t.id}</td>
-              <td>${t.category}</td>
+              <td>${escapeHtml(t.category)}</td>
               <td><span class="badge ${t.status==='open'?'badge-warning':'badge-neutral'}">${t.status}</span></td>
               <td class="dim">${fmtDate(t.created_at)}</td>
               <td class="dim">${t.closed_at ? fmtDate(t.closed_at) : '—'}</td>
-              <td class="dim">${t.closed_by_username_snapshot ?? '—'}</td>
-              <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem;color:var(--text-muted)">${t.summary ? t.summary.slice(0,120)+'…' : '—'}</td>
+              <td class="dim">${escapeHtml(t.closed_by_username_snapshot ?? '—')}</td>
+              <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem;color:var(--text-muted)">${escapeHtml(t.summary ? t.summary.slice(0,120)+'…' : '—')}</td>
             </tr>
           `).join('')}</tbody>
         </table></div>
@@ -83,7 +83,7 @@ window['page-tickets'] = {
       modal.innerHTML = `
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;max-width:600px;width:100%;max-height:80vh;overflow-y:auto">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-            <h2 style="font-size:1rem;margin:0">Ticket #${t.id} — ${t.category}</h2>
+            <h2 style="font-size:1rem;margin:0">Ticket #${t.id} — ${escapeHtml(t.category)}</h2>
             <button onclick="this.closest('[style]').remove()" class="btn btn-ghost" style="padding:.2rem .5rem">✕</button>
           </div>
           <table style="width:100%;font-size:.82rem;margin-bottom:1rem">
@@ -91,9 +91,9 @@ window['page-tickets'] = {
             <tr><td style="color:var(--text-muted);padding:.3rem 0">Erstellt</td><td>${fmtDate(t.created_at)}</td></tr>
             <tr><td style="color:var(--text-muted);padding:.3rem 0">Geschlossen</td><td>${t.closed_at ? fmtDate(t.closed_at) : '—'}</td></tr>
             <tr><td style="color:var(--text-muted);padding:.3rem 0">Nachrichten</td><td>${t.message_count ?? '—'}</td></tr>
-            <tr><td style="color:var(--text-muted);padding:.3rem 0">Bearbeiter</td><td>${t.closed_by_username_snapshot ?? '—'}</td></tr>
+            <tr><td style="color:var(--text-muted);padding:.3rem 0">Bearbeiter</td><td>${escapeHtml(t.closed_by_username_snapshot ?? '—')}</td></tr>
           </table>
-          ${t.summary ? `<div style="background:var(--surface-raised);border-radius:6px;padding:1rem;font-size:.82rem;line-height:1.6;color:var(--text-secondary)">${t.summary}</div>` : '<p style="color:var(--text-muted);font-size:.82rem">Keine Zusammenfassung verfügbar.</p>'}
+          ${t.summary ? `<div style="background:var(--surface-raised);border-radius:6px;padding:1rem;font-size:.82rem;line-height:1.6;color:var(--text-secondary)">${escapeHtml(t.summary)}</div>` : '<p style="color:var(--text-muted);font-size:.82rem">Keine Zusammenfassung verfügbar.</p>'}
         </div>
       `;
       modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });

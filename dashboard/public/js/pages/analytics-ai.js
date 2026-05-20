@@ -47,7 +47,7 @@ window['page-analytics-ai'] = {
             <thead><tr><th>Feature</th><th>Total</th><th>Erfolge</th><th>Fehler</th><th>Ø Dauer</th></tr></thead>
             <tbody>${byFeature.map(r => `
               <tr>
-                <td class="mono">${r.feature}</td>
+                <td class="mono">${escapeHtml(r.feature)}</td>
                 <td>${r.total}</td>
                 <td style="color:var(--online)">${r.successes}</td>
                 <td style="color:${r.errors>0?'var(--offline)':'var(--text-muted)'}">${r.errors}</td>
