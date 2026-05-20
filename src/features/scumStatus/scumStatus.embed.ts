@@ -10,7 +10,6 @@ import { env } from '../../config/env';
 import type { QueryResult } from './scumStatus.service';
 
 const STATUS_TITLE   = '🩸 SECTOR 13 • SERVERSTATUS';
-const STATUS_DESC    = 'Live-Überwachung des SCUM Servers.';
 const STATUS_FOOTER  = 'SECTOR 13 • SCUM SERVER';
 const RESTART_TIMES  = '00:00 & 12:00 Uhr';
 
@@ -19,8 +18,9 @@ export function buildStatusEmbed(
   host?: string,
   queryPort?: number,
 ): EmbedBuilder {
-  const logoUrl  = env.SCUM_STATUS_LOGO_URL || undefined;
-  const addrLine = host && queryPort ? `\`${host}:${queryPort}\`` : null;
+  const logoUrl   = env.SCUM_STATUS_LOGO_URL   || undefined;
+  const bannerUrl = env.SCUM_STATUS_BANNER_URL || undefined;
+  const addrLine  = host && queryPort ? `\`${host}:${queryPort}\`` : null;
 
   // ─── Base embed (shared) ──────────────────────────────────────────────────
   const embed = new EmbedBuilder()
@@ -28,7 +28,8 @@ export function buildStatusEmbed(
     .setFooter({ text: STATUS_FOOTER, ...(logoUrl ? { iconURL: logoUrl } : {}) })
     .setTimestamp();
 
-  if (logoUrl) embed.setThumbnail(logoUrl);
+  if (logoUrl)   embed.setThumbnail(logoUrl);
+  if (bannerUrl) embed.setImage(bannerUrl);
 
   // ─── OFFLINE ──────────────────────────────────────────────────────────────
   if (!result.online) {
@@ -42,27 +43,25 @@ export function buildStatusEmbed(
 
     return embed
       .setColor(SECTOR_COLORS.DARK_RED)
-      .setDescription(STATUS_DESC)
       .addFields(fields);
   }
 
   // ─── ONLINE ───────────────────────────────────────────────────────────────
-  const desc = result.serverName
-    ? `${STATUS_DESC}\n\`${result.serverName}\``
-    : STATUS_DESC;
-
   const fields: { name: string; value: string; inline: boolean }[] = [
-    { name: '⚡ Status',   value: '🟢 **ONLINE**',                                    inline: true },
-    { name: '👥 Spieler',  value: `**${result.players}** / ${result.maxPlayers}`,     inline: true },
-    { name: '🏓 Ping',     value: `${result.ping} ms`,                                inline: true },
+    { name: '⚡ Status',   value: '🟢 **ONLINE**',                                inline: true },
+    { name: '👥 Spieler',  value: `**${result.players}** / ${result.maxPlayers}`, inline: true },
+    { name: '🏓 Ping',     value: `${result.ping} ms`,                            inline: true },
   ];
   if (addrLine) fields.push({ name: '🌐 Adresse',  value: addrLine,     inline: true });
   fields.push(  { name: '🔁 Neustart', value: RESTART_TIMES, inline: true });
 
-  return embed
+  const embed2 = embed
     .setColor(SECTOR_COLORS.SECTOR_RED)
-    .setDescription(desc)
     .addFields(fields);
+
+  if (result.serverName) embed2.setDescription(`\`${result.serverName}\``);
+
+  return embed2;
 }
 
 export function buildScumConfigModal(): ModalBuilder {

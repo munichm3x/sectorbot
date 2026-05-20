@@ -20,5 +20,6 @@ export const env = {
   GROQ_API_KEY:        process.env.GROQ_API_KEY ?? '',
   STEAM_API_KEY:       process.env.STEAM_API_KEY ?? '',
   RULES_BANNER_URL:      process.env.RULES_BANNER_URL ?? '',
-  SCUM_STATUS_LOGO_URL:  process.env.SCUM_STATUS_LOGO_URL ?? '',
+  SCUM_STATUS_LOGO_URL:    process.env.SCUM_STATUS_LOGO_URL ?? '',
+  SCUM_STATUS_BANNER_URL:  process.env.SCUM_STATUS_BANNER_URL ?? '',
 } as const;
