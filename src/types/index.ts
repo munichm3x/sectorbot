@@ -20,6 +20,10 @@ export interface Ticket {
   created_at: number;
   closed_at: number | null;
   last_activity_at?: number | null;
+  // Migration columns (may be null on older records)
+  closed_by?: string | null;
+  message_count?: number | null;
+  summary?: string | null;
 }
 
 export interface Panel {
@@ -42,6 +46,7 @@ export interface GuildConfig {
   ticket_panel_channel_id: string | null;
   ticket_category_id: string | null;
   ticket_log_channel_id: string | null;
+  ticket_archive_channel_id: string | null;
   rules_channel_id: string | null;
   whitelist_role_id: string | null;
   ticket_panel_message_id: string | null;

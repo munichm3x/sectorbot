@@ -53,6 +53,16 @@ export const setupChannelSelectDispatcher: ChannelSelectMenuHandler = {
       });
     }
 
+    // Step 4 – Archiv-Channel
+    if (payload === 't:arch') {
+      upsertConfig(guildId, { ticket_archive_channel_id: channelId });
+      const config = getConfig(guildId)!;
+      return interaction.update({
+        embeds: [createWizardStep4Embed(config)],
+        components: buildWizardStep4Components(),
+      });
+    }
+
     // Step 5 – Regelwerk-Channel
     if (payload === 'r:ch') {
       upsertConfig(guildId, { rules_channel_id: channelId });

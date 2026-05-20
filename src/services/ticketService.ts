@@ -18,6 +18,7 @@ import {
 } from '../db/index';
 import { makeId, sanitizeChannelName, IDS } from '../utils/ids';
 import { logger } from '../utils/logger';
+import { archiveTicket } from './ticketArchiveService';
 import type { Ticket } from '../types';
 
 // ─── Error Classification ─────────────────────────────────────────────────────
@@ -233,10 +234,14 @@ export async function closeTicket(guild: Guild, channelId: string, closedBy: Gui
   const ticket = findTicketByChannel(channelId);
 
   await logEvent(guild, 'Ticket geschlossen', [
-    { name: 'Kanal',           value: ticket ? `ticket-${ticket.category}` : channelId, inline: true },
-    { name: 'Geschlossen von', value: `<@${closedBy.id}>`,                              inline: true },
-    { name: 'Ersteller',       value: ticket ? `<@${ticket.opener_user_id}>` : 'Unbekannt', inline: true },
+    { name: 'Kanal',           value: ticket ? `ticket-${ticket.category}` : channelId,      inline: true },
+    { name: 'Geschlossen von', value: `<@${closedBy.id}>`,                                   inline: true },
+    { name: 'Ersteller',       value: ticket ? `<@${ticket.opener_user_id}>` : 'Unbekannt',  inline: true },
   ]);
+
+  // Archive: read messages, generate AI summary, post card to archive channel
+  // Must run BEFORE channel.delete() so messages can still be read
+  await archiveTicket(guild, channelId, ticket, closedBy.id);
 
   dbCloseTicket(channelId);
 

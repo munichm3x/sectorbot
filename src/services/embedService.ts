@@ -319,20 +319,28 @@ export function buildWizardStep3Components(): ActionRowBuilder<MessageActionRowC
   ];
 }
 
-/** Step 4 – Log-Channel (optional) */
+/** Step 4 – Log-Channel + Archiv-Channel (beide optional) */
 export function createWizardStep4Embed(config: GuildConfig): EmbedBuilder {
-  const logCh = config.ticket_log_channel_id
+  const logCh  = config.ticket_log_channel_id
     ? `<#${config.ticket_log_channel_id}>`
+    : '*(nicht gesetzt — optional)*';
+  const archCh = config.ticket_archive_channel_id
+    ? `<#${config.ticket_archive_channel_id}>`
     : '*(nicht gesetzt — optional)*';
 
   return new EmbedBuilder()
     .setColor(SECTOR_COLORS.SECTOR_RED)
-    .setTitle('📋 Log-Channel *(optional)*')
+    .setTitle('📋 Log- & Archiv-Channel *(optional)*')
     .setDescription(
-      'Wähle einen Channel für Bot-Logs. Alle Ticket-Aktionen werden dort protokolliert.\n' +
-      'Dieser Schritt ist **optional** — klicke auf **"Weiter"**, falls du keine Logs benötigst.'
+      '**Log-Channel:** Alle Ticket-Aktionen werden dort protokolliert.\n' +
+      '**Archiv-Channel:** Nach dem Schließen eines Tickets wird dort automatisch eine\n' +
+      'interne Zusammenfassungs-Card mit KI-Analyse gepostet.\n\n' +
+      'Beide Felder sind optional — klicke auf **"Weiter"**, um sie zu überspringen.'
     )
-    .addFields({ name: 'Log-Channel', value: logCh, inline: true })
+    .addFields(
+      { name: '📋 Log-Channel',    value: logCh,  inline: true },
+      { name: '🗄️ Archiv-Channel', value: archCh, inline: true },
+    )
     .setFooter({ text: 'Schritt 4 von 7 • Bot einrichten' })
     .setTimestamp();
 }
@@ -343,6 +351,12 @@ export function buildWizardStep4Components(): ActionRowBuilder<MessageActionRowC
       new ChannelSelectMenuBuilder()
         .setCustomId('s:t:log')
         .setPlaceholder('📋 Log-Channel auswählen (optional)...')
+        .setChannelTypes(ChannelType.GuildText)
+    ) as unknown as ActionRowBuilder<MessageActionRowComponentBuilder>,
+    new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+      new ChannelSelectMenuBuilder()
+        .setCustomId('s:t:arch')
+        .setPlaceholder('🗄️ Archiv-Channel auswählen (optional)...')
         .setChannelTypes(ChannelType.GuildText)
     ) as unknown as ActionRowBuilder<MessageActionRowComponentBuilder>,
     new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -463,7 +477,8 @@ export function createWizardReviewEmbed(
     .addFields(
       { name: '📢 Ticket-Panel-Channel',   value: f(config.ticket_panel_channel_id), inline: true },
       { name: '📦 Öffentliche Kategorien', value: `${categories.length} Kategorien`,  inline: true },
-      { name: '📋 Log-Channel',            value: config.ticket_log_channel_id ? `<#${config.ticket_log_channel_id}>` : '*(optional — nicht gesetzt)*', inline: true },
+      { name: '📋 Log-Channel',            value: config.ticket_log_channel_id     ? `<#${config.ticket_log_channel_id}>` : '*(optional — nicht gesetzt)*', inline: true },
+      { name: '🗄️ Archiv-Channel',         value: config.ticket_archive_channel_id ? `<#${config.ticket_archive_channel_id}>` : '*(optional — nicht gesetzt)*', inline: true },
       {
         name: '👥 Support-Rollen',
         value: supportRoles.length > 0 ? supportRoles.map(id => `<@&${id}>`).join(' ') : '❌ *keine*',

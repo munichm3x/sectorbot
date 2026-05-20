@@ -7,6 +7,7 @@ import {
   getAllOpenTickets, touchTicketActivity,
 } from '../db/index';
 import { logEvent } from '../services/logService';
+import { archiveTicket } from '../services/ticketArchiveService';
 import { logger } from '../utils/logger';
 
 const TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 Stunden
@@ -100,6 +101,11 @@ async function fireAutoClose(channelId: string): Promise<void> {
 
       await rawChannel.send({ embeds: [embed] }).catch(() => void 0);
     }
+
+    // Archive: read messages, generate AI summary, post to archive channel
+    // Must run BEFORE closeTicket() and channel.delete() so messages are still readable
+    // The bot's closing embed above is already in the channel — it will be filtered (isBot=true)
+    await archiveTicket(guild, channelId, ticket, _client.user?.id ?? 'auto-close');
 
     // DB schließen
     closeTicket(channelId);

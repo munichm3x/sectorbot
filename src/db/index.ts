@@ -22,10 +22,14 @@ export function initDb(path: string): void {
   db = new Database(path);
   db.pragma('journal_mode = WAL');
   db.exec(CREATE_TICKETS_TABLE);
-  // Migration: add last_activity_at to existing tickets tables
-  try { db.exec(`ALTER TABLE tickets ADD COLUMN last_activity_at INTEGER`); } catch { /* already exists */ }
+  // Migrations — safe to run on every start (ALTER TABLE is ignored if column exists)
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN last_activity_at INTEGER`);  } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN closed_by TEXT`);            } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN message_count INTEGER`);     } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN summary TEXT`);              } catch { /* already exists */ }
   db.exec(CREATE_PANELS_TABLE);
   db.exec(CREATE_GUILD_CONFIG_TABLE);
+  try { db.exec(`ALTER TABLE guild_config ADD COLUMN ticket_archive_channel_id TEXT`); } catch { /* already exists */ }
   db.exec(CREATE_GUILD_SUPPORT_ROLES_TABLE);
   db.exec(CREATE_TICKET_CATEGORY_CONFIG_TABLE);
   db.exec(CREATE_OLDMAN_CONFIG_TABLE);
@@ -122,37 +126,54 @@ export function upsertGuildConfig(
   getDb().prepare(`
     INSERT INTO guild_config (
       guild_id, ticket_panel_channel_id, ticket_category_id,
-      ticket_log_channel_id, rules_channel_id, whitelist_role_id,
+      ticket_log_channel_id, ticket_archive_channel_id, rules_channel_id, whitelist_role_id,
       ticket_panel_message_id, rules_message_id, setup_completed,
       created_at, updated_at
     ) VALUES (
       @guild_id, @ticket_panel_channel_id, @ticket_category_id,
-      @ticket_log_channel_id, @rules_channel_id, @whitelist_role_id,
+      @ticket_log_channel_id, @ticket_archive_channel_id, @rules_channel_id, @whitelist_role_id,
       @ticket_panel_message_id, @rules_message_id, @setup_completed,
       @now, @now
     ) ON CONFLICT(guild_id) DO UPDATE SET
-      ticket_panel_channel_id = COALESCE(@ticket_panel_channel_id, ticket_panel_channel_id),
-      ticket_category_id      = COALESCE(@ticket_category_id, ticket_category_id),
-      ticket_log_channel_id   = COALESCE(@ticket_log_channel_id, ticket_log_channel_id),
-      rules_channel_id        = COALESCE(@rules_channel_id, rules_channel_id),
-      whitelist_role_id       = COALESCE(@whitelist_role_id, whitelist_role_id),
-      ticket_panel_message_id = COALESCE(@ticket_panel_message_id, ticket_panel_message_id),
-      rules_message_id        = COALESCE(@rules_message_id, rules_message_id),
-      setup_completed         = COALESCE(@setup_completed, setup_completed),
-      updated_at              = @now
+      ticket_panel_channel_id   = COALESCE(@ticket_panel_channel_id,   ticket_panel_channel_id),
+      ticket_category_id        = COALESCE(@ticket_category_id,        ticket_category_id),
+      ticket_log_channel_id     = COALESCE(@ticket_log_channel_id,     ticket_log_channel_id),
+      ticket_archive_channel_id = COALESCE(@ticket_archive_channel_id, ticket_archive_channel_id),
+      rules_channel_id          = COALESCE(@rules_channel_id,          rules_channel_id),
+      whitelist_role_id         = COALESCE(@whitelist_role_id,         whitelist_role_id),
+      ticket_panel_message_id   = COALESCE(@ticket_panel_message_id,   ticket_panel_message_id),
+      rules_message_id          = COALESCE(@rules_message_id,          rules_message_id),
+      setup_completed           = COALESCE(@setup_completed,           setup_completed),
+      updated_at                = @now
   `).run({
-    guild_id:                guildId,
-    ticket_panel_channel_id: data.ticket_panel_channel_id ?? null,
-    ticket_category_id:      data.ticket_category_id ?? null,
-    ticket_log_channel_id:   data.ticket_log_channel_id ?? null,
-    rules_channel_id:        data.rules_channel_id ?? null,
-    whitelist_role_id:       data.whitelist_role_id ?? null,
-    ticket_panel_message_id: data.ticket_panel_message_id ?? null,
-    rules_message_id:        data.rules_message_id ?? null,
-    setup_completed:         data.setup_completed ?? 0,
+    guild_id:                  guildId,
+    ticket_panel_channel_id:   data.ticket_panel_channel_id   ?? null,
+    ticket_category_id:        data.ticket_category_id        ?? null,
+    ticket_log_channel_id:     data.ticket_log_channel_id     ?? null,
+    ticket_archive_channel_id: data.ticket_archive_channel_id ?? null,
+    rules_channel_id:          data.rules_channel_id          ?? null,
+    whitelist_role_id:         data.whitelist_role_id         ?? null,
+    ticket_panel_message_id:   data.ticket_panel_message_id   ?? null,
+    rules_message_id:          data.rules_message_id          ?? null,
+    setup_completed:           data.setup_completed           ?? 0,
     now,
   });
   return getGuildConfig(guildId)!;
+}
+
+export function enrichTicketClose(
+  channelId: string,
+  closedBy: string,
+  messageCount: number,
+  summary: string,
+): void {
+  getDb()
+    .prepare(`
+      UPDATE tickets
+      SET closed_by = ?, message_count = ?, summary = ?
+      WHERE channel_id = ?
+    `)
+    .run(closedBy, messageCount, summary.slice(0, 2000), channelId);
 }
 
 export function getGuildSupportRoles(guildId: string): string[] {
