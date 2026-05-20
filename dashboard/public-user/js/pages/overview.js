@@ -49,7 +49,7 @@ window['page-overview'] = {
             </div>
             <div class="stat-card">
               <div class="stat-label">Mitglieder</div>
-              <div class="stat-value">${fmt(guild.memberCount)}</div>
+              <div class="stat-value">${escapeHtml(fmt(guild.memberCount))}</div>
             </div>
           </div>
         </div>
@@ -61,12 +61,12 @@ window['page-overview'] = {
           <div class="stat-grid" style="margin-top:.75rem">
             <div class="stat-card">
               <div class="stat-label">Nachrichten</div>
-              <div class="stat-value">${fmt(activity.messages)}</div>
+              <div class="stat-value">${escapeHtml(fmt(activity.messages))}</div>
               <div class="stat-sub">heute</div>
             </div>
             <div class="stat-card">
               <div class="stat-label">Voice Zeit</div>
-              <div class="stat-value">${fmt(Math.round((activity.voiceSecs ?? 0) / 60))}</div>
+              <div class="stat-value">${escapeHtml(fmt(Math.round((activity.voiceSecs ?? 0) / 60)))}</div>
               <div class="stat-sub">Minuten heute</div>
             </div>
           </div>
