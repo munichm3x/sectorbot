@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SECTOR 13 Control</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <!-- Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div id="app">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">S</div>
+      <div>
+        <div class="logo-text">SECTOR 13</div>
+        <div class="logo-sub">Control Panel</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <div class="nav-section">Übersicht</div>
+      <div class="nav-item" data-page="overview">
+        <span class="nav-icon">⬡</span> Overview
+      </div>
+
+      <div class="nav-section">Analytics</div>
+      <div class="nav-item" data-page="analytics-messages">
+        <span class="nav-icon">✉</span> Nachrichten
+      </div>
+      <div class="nav-item" data-page="analytics-voice">
+        <span class="nav-icon">🎙</span> Voice & Stream
+      </div>
+      <div class="nav-item" data-page="analytics-tickets">
+        <span class="nav-icon">🎫</span> Tickets
+      </div>
+      <div class="nav-item" data-page="analytics-growth">
+        <span class="nav-icon">📈</span> Wachstum
+      </div>
+      <div class="nav-item" data-page="analytics-ai">
+        <span class="nav-icon">◈</span> AI Usage
+      </div>
+      <div class="nav-item" data-page="analytics-status">
+        <span class="nav-icon">◉</span> Serverstatus
+      </div>
+
+      <div class="nav-section">Management</div>
+      <div class="nav-item" data-page="tickets">
+        <span class="nav-icon">📋</span> Tickets
+      </div>
+      <div class="nav-item" data-page="members">
+        <span class="nav-icon">👥</span> Mitglieder
+      </div>
+      <div class="nav-item" data-page="server-status">
+        <span class="nav-icon">⚡</span> Server Status
+      </div>
+
+      <div class="nav-section">System</div>
+      <div class="nav-item" data-page="logs">
+        <span class="nav-icon">📄</span> Logs
+      </div>
+      <div class="nav-item" data-page="ai">
+        <span class="nav-icon">🤖</span> AI
+      </div>
+      <div class="nav-item" data-page="settings">
+        <span class="nav-icon">⚙</span> Einstellungen
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="bot-status">
+        <div class="status-dot" id="bot-status-dot"></div>
+        <span id="bot-status-text">Verbinde...</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main area -->
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-title" id="page-title">Overview</div>
+      <div class="topbar-right">
+        <div class="topbar-user">
+          <img class="topbar-avatar" id="user-avatar" src="" alt="" onerror="this.style.display='none'">
+          <span id="user-name">—</span>
+        </div>
+        <a href="/auth/logout" class="btn btn-ghost" style="font-size:0.75rem;padding:0.3rem 0.6rem;">Logout</a>
+      </div>
+    </header>
+
+    <div class="page-content" id="page-content">
+      <!-- Page content rendered here by JS -->
+      <div class="empty-state">
+        <div class="empty-icon">⬡</div>
+        <p>Lade Dashboard...</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- App scripts -->
+<script src="/js/api.js"></script>
+<script src="/js/charts.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>
