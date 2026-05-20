@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login — SECTOR 13 Control</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .login-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+    }
+    .login-logo {
+      width: 56px; height: 56px;
+      background: var(--accent);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; font-weight: 900; color: #fff;
+      margin: 0 auto 1.25rem;
+    }
+    .login-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .login-sub   { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.75rem; }
+    .discord-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem;
+      width: 100%;
+      background: #5865f2;
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 0.7rem 1rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .discord-btn:hover { background: #4752c4; text-decoration: none; }
+    .login-note { font-size: 0.72rem; color: var(--text-muted); margin-top: 1.25rem; }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <div class="login-logo">S</div>
+    <div class="login-title">SECTOR 13 Control</div>
+    <div class="login-sub">Admin Dashboard — nur für autorisierte Teammitglieder</div>
+    <a href="/auth/login" class="discord-btn">
+      <svg width="20" height="15" viewBox="0 0 71 55" fill="white" xmlns="http://www.w3.org/2000/svg">
+        <path d="M60.1 4.9A58.5 58.5 0 0 0 45.5 0.5a40 40 0 0 0-1.8 3.7 54.2 54.2 0 0 0-16.3 0 40 40 0 0 0-1.8-3.7A58.3 58.3 0 0 0 11 4.9C1.6 19 -1 32.8 0.3 46.4a58.9 58.9 0 0 0 17.9 9 44.1 44.1 0 0 0 3.8-6.2 38.3 38.3 0 0 1-6-2.9l1.5-1.1a41.9 41.9 0 0 0 36 0l1.5 1.1a38.4 38.4 0 0 1-6 2.9 44.5 44.5 0 0 0 3.8 6.2 58.7 58.7 0 0 0 17.9-9C72 32.2 68.8 18.5 60.1 4.9zM23.7 38a6.7 6.7 0 0 1-6.3-7 6.7 6.7 0 0 1 6.3-7 6.7 6.7 0 0 1 6.3 7 6.7 6.7 0 0 1-6.3 7zm23.6 0a6.7 6.7 0 0 1-6.3-7 6.7 6.7 0 0 1 6.3-7 6.7 6.7 0 0 1 6.3 7 6.7 6.7 0 0 1-6.3 7z"/>
+      </svg>
+      Mit Discord anmelden
+    </a>
+    <p class="login-note">Zugang nur für Server-Admins und autorisierte Teammitglieder.<br>Deine Session läuft nach 24h ab.</p>
+  </div>
+</body>
+</html>
