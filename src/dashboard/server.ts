@@ -13,6 +13,7 @@ import { logger } from '../utils/logger';
 import { requireAuth, rateLimit } from './auth/middleware';
 import { buildAuthRouter } from './routes/auth.routes';
 import { buildApiRouter } from './routes/api/index';
+import { buildPublicApiRouter } from './routes/public-api/index';
 
 const SQLiteStore = connectSqlite3(session);
 
@@ -58,6 +59,20 @@ export function startDashboard(client: Client): void {
 
   // Protected API routes
   app.use('/api', requireAuth, buildApiRouter(client));
+
+  // Public user API (must come before /public static middleware)
+  app.use('/public-api', buildPublicApiRouter(client));
+
+  // Public user static files
+  const PUBLIC_USER_DIR = join(process.cwd(), 'dashboard', 'public-user');
+  app.use('/public', express.static(PUBLIC_USER_DIR));
+
+  // SPA fallback for /public/* paths (client-side routing)
+  app.get('/public/*', (_req, res) => {
+    res.sendFile('index.html', { root: PUBLIC_USER_DIR }, (err) => {
+      if (err) res.status(404).send('Public dashboard not found.');
+    });
+  });
 
   // Static files: HTML/CSS/JS from dashboard/public/ at project root
   const PUBLIC_DIR = join(process.cwd(), 'dashboard', 'public');
