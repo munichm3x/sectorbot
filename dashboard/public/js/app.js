@@ -39,12 +39,17 @@ function emptyState(message = 'Noch keine Daten vorhanden.') {
 function loadingState() {
   return `<div class="card"><div class="skeleton" style="height:200px"></div></div>`;
 }
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 function errorState(err) {
-  return `<div class="empty-state"><div class="empty-icon" style="color:var(--offline)">✕</div><p>Fehler: ${err}</p></div>`;
+  return `<div class="empty-state"><div class="empty-icon" style="color:var(--offline)">✕</div><p>Fehler: ${escapeHtml(err)}</p></div>`;
 }
 window.emptyState = emptyState;
 window.loadingState = loadingState;
 window.errorState = errorState;
+window.escapeHtml = escapeHtml;
 
 // ── Number formatting ─────────────────────────────────────────────────────────
 function fmt(n) {
@@ -74,6 +79,12 @@ window.fmtUptime = fmtUptime;
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 async function navigateTo(page) {
+  // Validate page against known pages to prevent path traversal
+  if (!Object.prototype.hasOwnProperty.call(PAGE_TITLES, page)) {
+    const content = document.getElementById('page-content');
+    content.innerHTML = emptyState('Seite nicht gefunden.');
+    return;
+  }
   // Update active nav item
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.page === page);
@@ -107,12 +118,14 @@ async function navigateTo(page) {
   }
 }
 
+const _loadedScripts = new Set();
+
 function loadScript(src) {
+  if (_loadedScripts.has(src)) return Promise.resolve();
   return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
     const s = document.createElement('script');
     s.src = src;
-    s.onload  = resolve;
+    s.onload  = () => { _loadedScripts.add(src); resolve(); };
     s.onerror = () => reject(new Error(`Script ${src} konnte nicht geladen werden`));
     document.head.appendChild(s);
   });
@@ -168,6 +181,10 @@ async function init() {
   } catch (err) {
     if (err.message === 'Unauthenticated') return; // api.js already redirects
     console.error('Init error:', err);
+    const content = document.getElementById('page-content');
+    if (content) {
+      content.innerHTML = errorState('Verbindung zum Server fehlgeschlagen. Bitte Seite neu laden.');
+    }
   }
 }
 
