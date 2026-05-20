@@ -91,6 +91,10 @@ export function rateLimit(maxRequests: number, windowMs: number) {
 
     if (!entry || now >= entry.resetAt) {
       rateStore.set(ip, { count: 1, resetAt: now + windowMs });
+      // Opportunistically purge expired entries to prevent unbounded growth
+      for (const [k, v] of rateStore) {
+        if (now >= v.resetAt) rateStore.delete(k);
+      }
       next();
       return;
     }
@@ -103,4 +107,22 @@ export function rateLimit(maxRequests: number, windowMs: number) {
     entry.count++;
     next();
   };
+}
+
+// ─── Startup config warning ───────────────────────────────────────────────────
+
+/**
+ * Call once at dashboard startup. Warns if no permission restrictions are configured,
+ * which means any authenticated Discord user gets Viewer access.
+ */
+export function warnIfOpenAccess(): void {
+  if (
+    env.DASHBOARD_ALLOWED_USER_IDS.length === 0 &&
+    env.DASHBOARD_ADMIN_ROLE_IDS.length === 0 &&
+    env.DASHBOARD_MOD_ROLE_IDS.length === 0
+  ) {
+    // Import logger lazily to avoid circular deps
+    const { logger } = require('../../utils/logger') as typeof import('../../utils/logger');
+    logger.warn('[dashboard] WARNUNG: Keine Berechtigungs-Konfiguration gesetzt. Jeder Discord-User hat Viewer-Zugriff. Setze DASHBOARD_ALLOWED_USER_IDS oder DASHBOARD_ADMIN_ROLE_IDS.');
+  }
 }
