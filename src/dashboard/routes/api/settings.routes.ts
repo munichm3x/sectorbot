@@ -1,6 +1,7 @@
 // src/dashboard/routes/api/settings.routes.ts
 import { Router } from 'express';
 import { requirePermission, PermLevel } from '../../auth/middleware';
+import { logger } from '../../../utils/logger';
 import { insertAuditLog } from '../../../analytics/analytics.db';
 import {
   getGuildConfig, upsertGuildConfig, getGuildSupportRoles,
@@ -48,7 +49,10 @@ settingsRouter.patch('/guild', (req, res) => {
     upsertGuildConfig(guildId, patch as Parameters<typeof upsertGuildConfig>[1]);
     insertAuditLog({ guildId, adminUserId: user.userId, action: 'settings.guild.update', oldValue: old, newValue: { ...old, ...patch }, success: true, ipAddress: req.ip });
     res.json({ success: true });
-  } catch (err) { res.status(400).json({ success: false, error: String(err) }); }
+  } catch (err) {
+    logger.error('[dashboard] settings update error:', err);
+    res.status(500).json({ success: false, error: 'Internal error' });
+  }
 });
 
 settingsRouter.patch('/scum', (req, res) => {
@@ -56,13 +60,34 @@ settingsRouter.patch('/scum', (req, res) => {
     const guildId = req.session.user!.guildId;
     const user    = req.session.user!;
     const body    = req.body as Record<string, unknown>;
+
+    // Non-secret fields with type validation
     const patch: Record<string, unknown> = {};
-    for (const key of ['channel_id','host','query_port','update_interval_secs','enabled']) {
-      if (key in body) patch[key] = body[key];
+
+    if ('channel_id' in body) {
+      patch.channel_id = typeof body.channel_id === 'string' ? body.channel_id : null;
     }
+    if ('host' in body) {
+      patch.host = typeof body.host === 'string' ? body.host : null;
+    }
+    if ('query_port' in body) {
+      const port = parseInt(String(body.query_port), 10);
+      patch.query_port = isNaN(port) || port < 1 || port > 65535 ? null : port;
+    }
+    if ('update_interval_secs' in body) {
+      const secs = parseInt(String(body.update_interval_secs), 10);
+      patch.update_interval_secs = isNaN(secs) || secs < 1 ? null : secs;
+    }
+    if ('enabled' in body) {
+      patch.enabled = body.enabled === true || body.enabled === 1 || body.enabled === 'true' ? 1 : 0;
+    }
+
     const old = getScumStatusConfig(guildId);
     upsertScumStatusConfig(guildId, patch as Parameters<typeof upsertScumStatusConfig>[1]);
     insertAuditLog({ guildId, adminUserId: user.userId, action: 'settings.scum.update', oldValue: old, newValue: { ...old, ...patch }, success: true, ipAddress: req.ip });
     res.json({ success: true });
-  } catch (err) { res.status(400).json({ success: false, error: String(err) }); }
+  } catch (err) {
+    logger.error('[dashboard] settings update error:', err);
+    res.status(500).json({ success: false, error: 'Internal error' });
+  }
 });

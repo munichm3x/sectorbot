@@ -4,6 +4,7 @@ import type { Client } from 'discord.js';
 import { getScumStatusConfig } from '../../../db/index';
 import { queryServer } from '../../../features/scumStatus/scumStatus.service';
 import { requirePermission, PermLevel } from '../../auth/middleware';
+import { logger } from '../../../utils/logger';
 
 export function serverStatusRouter(_client: Client): Router {
   const router = Router();
@@ -25,7 +26,10 @@ export function serverStatusRouter(_client: Client): Router {
       }
       const result = await queryServer(config.host, config.query_port);
       res.json({ success: true, data: result });
-    } catch (err) { res.status(500).json({ success: false, error: String(err) }); }
+    } catch (err) {
+      logger.error('[dashboard] server-status test error:', err);
+      res.status(500).json({ success: false, error: 'Internal error' });
+    }
   });
 
   return router;

@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import {
   getRecentClosedTickets, countClosedTickets, searchClosedTickets,
-  countSearchClosedTickets, getClosedTicketById, getAllOpenTickets,
+  countSearchClosedTickets, getClosedTicketById, getDb,
 } from '../../../db/index';
 import { requirePermission, PermLevel } from '../../auth/middleware';
 
@@ -21,8 +21,14 @@ ticketsRouter.get('/', (req, res) => {
     const search  = (req.query.search as string) ?? '';
 
     if (status === 'open') {
-      const tickets = getAllOpenTickets().filter(t => t.guild_id === guildId);
-      res.json({ success: true, data: { tickets, total: tickets.length, page: 1, pages: 1 } });
+      const db = getDb();
+      const total = (db.prepare(
+        `SELECT COUNT(*) AS n FROM tickets WHERE guild_id = ? AND status = 'open'`
+      ).get(guildId) as { n: number }).n;
+      const tickets = db.prepare(
+        `SELECT * FROM tickets WHERE guild_id = ? AND status = 'open' ORDER BY created_at DESC LIMIT ? OFFSET ?`
+      ).all(guildId, limit, offset) as unknown[];
+      res.json({ success: true, data: { tickets, total, page, pages: Math.ceil(total / limit) } });
       return;
     }
 
