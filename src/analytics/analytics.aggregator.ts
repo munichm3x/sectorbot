@@ -39,3 +39,7 @@ export function stopAggregator(): void {
     aggregatorInterval = null;
   }
 }
+
+// Clean shutdown — stop the aggregator interval on process signals
+process.once('SIGTERM', () => stopAggregator());
+process.once('SIGINT',  () => stopAggregator());

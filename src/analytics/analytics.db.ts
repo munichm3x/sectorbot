@@ -462,7 +462,8 @@ export function purgeOldRawEvents(retentionDays: number): void {
   const cutoff = nowSecs() - retentionDays * 86400;
   db.prepare(`DELETE FROM bot_interaction_events WHERE created_at < ?`).run(cutoff);
   db.prepare(`DELETE FROM ai_usage_events WHERE created_at < ?`).run(cutoff);
-  db.prepare(`DELETE FROM member_events WHERE created_at < ?`).run(cutoff - 83 * 86400); // keep 90d
+  const memberCutoff = nowSecs() - 90 * 86400; // always keep 90 days of member events
+  db.prepare(`DELETE FROM member_events WHERE created_at < ?`).run(memberCutoff);
 }
 
 /** Delete server_status_history rows older than retentionDays. */

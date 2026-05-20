@@ -48,7 +48,7 @@ export function setupAnalyticsTracking(client: Client): void {
       try {
         if (wasInChannel && !isInChannel) {
           // Left voice
-          if (wasStreaming) trackStreamStop(guildId, userId);
+          if (wasStreaming && env.ANALYTICS_STREAM_ENABLED) trackStreamStop(guildId, userId);
           trackVoiceLeave(guildId, userId);
 
         } else if (!wasInChannel && isInChannel) {
@@ -56,21 +56,23 @@ export function setupAnalyticsTracking(client: Client): void {
           const channelId = newState.channelId!;
           const categoryId = newState.channel?.parentId ?? null;
           trackVoiceJoin(guildId, channelId, categoryId, userId);
-          if (isStreaming) trackStreamStart(guildId, userId);
+          if (isStreaming && env.ANALYTICS_STREAM_ENABLED) trackStreamStart(guildId, userId);
 
         } else if (wasInChannel && isInChannel && oldState.channelId !== newState.channelId) {
           // Moved channels — treat as leave old + join new
-          if (wasStreaming) trackStreamStop(guildId, userId);
+          if (wasStreaming && env.ANALYTICS_STREAM_ENABLED) trackStreamStop(guildId, userId);
           trackVoiceLeave(guildId, userId);
           const channelId = newState.channelId!;
           const categoryId = newState.channel?.parentId ?? null;
           trackVoiceJoin(guildId, channelId, categoryId, userId);
-          if (isStreaming) trackStreamStart(guildId, userId);
+          if (isStreaming && env.ANALYTICS_STREAM_ENABLED) trackStreamStart(guildId, userId);
 
         } else if (wasInChannel && isInChannel) {
           // Same channel — check stream state change
-          if (!wasStreaming && isStreaming) trackStreamStart(guildId, userId);
-          else if (wasStreaming && !isStreaming) trackStreamStop(guildId, userId);
+          if (env.ANALYTICS_STREAM_ENABLED) {
+            if (!wasStreaming && isStreaming) trackStreamStart(guildId, userId);
+            else if (wasStreaming && !isStreaming) trackStreamStop(guildId, userId);
+          }
         }
       } catch (err) {
         logger.debug('[analytics] voiceStateUpdate Fehler:', err);
