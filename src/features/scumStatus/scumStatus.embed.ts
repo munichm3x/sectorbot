@@ -28,7 +28,6 @@ export function buildStatusEmbed(
     .setFooter({ text: STATUS_FOOTER, ...(logoUrl ? { iconURL: logoUrl } : {}) })
     .setTimestamp();
 
-  if (logoUrl)   embed.setThumbnail(logoUrl);
   if (bannerUrl) embed.setImage(bannerUrl);
 
   // ─── OFFLINE ──────────────────────────────────────────────────────────────
