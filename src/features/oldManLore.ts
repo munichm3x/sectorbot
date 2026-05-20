@@ -378,6 +378,9 @@ export function setupOldManLore(client: Client): void {
     if (now - (cooldowns.get(userId) ?? 0) < env.OLD_MAN_COOLDOWN_MS) return;
     cooldowns.set(userId, now);
 
+    const aiProvider = env.GROQ_API_KEY ? 'groq' : 'ollama';
+    const aiModel    = env.GROQ_API_KEY ? 'llama-3.3-70b-versatile' : env.OLLAMA_MODEL;
+
     const channel = message.channel;
     if (!('sendTyping' in channel)) return;
     await (channel as TextChannel).sendTyping().catch(() => void 0);
@@ -401,9 +404,7 @@ export function setupOldManLore(client: Client): void {
     try {
       reply = await askLLM(messages);
       if (env.ANALYTICS_AI_ENABLED && message.guildId) {
-        const provider = env.GROQ_API_KEY ? 'groq' : 'ollama';
-        const model    = env.GROQ_API_KEY ? 'llama-3.3-70b-versatile' : env.OLLAMA_MODEL;
-        try { trackAiEvent({ guildId: message.guildId, provider, model, feature: 'oldman', success: true, durationMs: Date.now() - t0 }); } catch { /* never crash bot */ }
+        try { trackAiEvent({ guildId: message.guildId, provider: aiProvider, model: aiModel, feature: 'oldman', success: true, durationMs: Date.now() - t0 }); } catch { /* never crash bot */ }
       }
       logger.info(`[OldManLore] intent=${intent} len=${reply.length}`);
 
@@ -430,16 +431,12 @@ export function setupOldManLore(client: Client): void {
         try {
           reply = await askLLM(retryMessages);
           if (env.ANALYTICS_AI_ENABLED && message.guildId) {
-            const provider = env.GROQ_API_KEY ? 'groq' : 'ollama';
-            const model    = env.GROQ_API_KEY ? 'llama-3.3-70b-versatile' : env.OLLAMA_MODEL;
-            try { trackAiEvent({ guildId: message.guildId, provider, model, feature: 'oldman_retry', success: true, durationMs: Date.now() - t1 }); } catch { /* never crash bot */ }
+            try { trackAiEvent({ guildId: message.guildId, provider: aiProvider, model: aiModel, feature: 'oldman_retry', success: true, durationMs: Date.now() - t1 }); } catch { /* never crash bot */ }
           }
         } catch {
           // Track failure
           if (env.ANALYTICS_AI_ENABLED && message.guildId) {
-            const provider = env.GROQ_API_KEY ? 'groq' : 'ollama';
-            const model    = env.GROQ_API_KEY ? 'llama-3.3-70b-versatile' : env.OLLAMA_MODEL;
-            try { trackAiEvent({ guildId: message.guildId, provider, model, feature: 'oldman_retry', success: false, error: 'retry_failed', durationMs: Date.now() - t1 }); } catch { /* never crash bot */ }
+            try { trackAiEvent({ guildId: message.guildId, provider: aiProvider, model: aiModel, feature: 'oldman_retry', success: false, error: 'retry_failed', durationMs: Date.now() - t1 }); } catch { /* never crash bot */ }
           }
           // Retry fehlgeschlagen → Fallback
           reply = randomFallback(command);
@@ -456,9 +453,7 @@ export function setupOldManLore(client: Client): void {
 
     } catch (err) {
       if (env.ANALYTICS_AI_ENABLED && message.guildId) {
-        const provider = env.GROQ_API_KEY ? 'groq' : 'ollama';
-        const model    = env.GROQ_API_KEY ? 'llama-3.3-70b-versatile' : env.OLLAMA_MODEL;
-        try { trackAiEvent({ guildId: message.guildId, provider, model, feature: 'oldman', success: false, error: String(err), durationMs: Date.now() - t0 }); } catch { /* never crash bot */ }
+        try { trackAiEvent({ guildId: message.guildId, provider: aiProvider, model: aiModel, feature: 'oldman', success: false, error: String(err), durationMs: Date.now() - t0 }); } catch { /* never crash bot */ }
       }
       logger.warn('[OldManLore] LLM nicht erreichbar, Fallback.', err);
       reply = randomFallback(command);

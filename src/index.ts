@@ -182,8 +182,6 @@ client.login(env.DISCORD_TOKEN);
 // Start web dashboard if enabled
 if (env.DASHBOARD_ENABLED) {
   client.once('ready', () => {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore — dashboard/server is generated in a later task
     import('./dashboard/server').then(({ startDashboard }: { startDashboard: (c: typeof client) => void }) => {
       startDashboard(client);
     }).catch((err: unknown) => logger.error('[dashboard] Startfehler:', err));
