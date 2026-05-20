@@ -10,12 +10,15 @@ function requireEnv(key: string): string {
 
 function envInt(key: string, fallback: number): number {
   const n = Number(process.env[key]);
-  return Number.isFinite(n) && n > 0 ? n : fallback;
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
 }
 
 function envBool(key: string, fallback: boolean): boolean {
-  if (process.env[key] === undefined) return fallback;
-  return process.env[key] !== 'false' && process.env[key] !== '0';
+  const v = process.env[key];
+  if (v === undefined) return fallback;
+  if (v === 'true'  || v === '1' || v === 'yes') return true;
+  if (v === 'false' || v === '0' || v === 'no')  return false;
+  return fallback;
 }
 
 function envList(key: string): string[] {
