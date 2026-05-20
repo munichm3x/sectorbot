@@ -12,6 +12,18 @@ import {
 } from '../auth/discord-oauth';
 import { determinePermLevel } from '../auth/middleware';
 import { logger } from '../../utils/logger';
+import { env } from '../../config/env';
+
+function buildPublicOAuthURL(state: string): string {
+  const params = new URLSearchParams({
+    client_id:     env.CLIENT_ID,
+    redirect_uri:  env.PUBLIC_DASHBOARD_OAUTH_CALLBACK_URL,
+    response_type: 'code',
+    scope:         'identify',
+    state,
+  });
+  return `https://discord.com/api/oauth2/authorize?${params}`;
+}
 
 export function buildAuthRouter(client: Client): Router {
   const router = Router();
@@ -128,6 +140,101 @@ export function buildAuthRouter(client: Client): Router {
       <a href="/auth/login">← Erneut versuchen</a>
       </div></body></html>
     `);
+  });
+
+  // ─── Public OAuth (any guild member) ──────────────────────────────────────
+
+  // GET /auth/public/login
+  router.get('/public/login', (req, res) => {
+    const state = generateState();
+    req.session.oauthState = state;
+    req.session.save((err) => {
+      if (err) {
+        logger.error('[public-dashboard] Session-Speicherfehler beim Public-Login:', err);
+        res.status(500).send('Session error. Try again.');
+        return;
+      }
+      res.redirect(buildPublicOAuthURL(state));
+    });
+  });
+
+  // GET /auth/public/callback
+  router.get('/public/callback', async (req, res) => {
+    try {
+      const { code, state, error } = req.query as Record<string, string>;
+
+      if (error) {
+        logger.warn('[public-dashboard] OAuth denied:', error);
+        res.redirect('/auth/denied?reason=oauth_denied');
+        return;
+      }
+
+      if (!code || !state || state !== req.session.oauthState) {
+        res.redirect('/auth/denied?reason=invalid_state');
+        return;
+      }
+
+      // Exchange code for access token (scopes: identify only)
+      const tokenData = await exchangeCode(code, env.PUBLIC_DASHBOARD_OAUTH_CALLBACK_URL);
+
+      // Get Discord user info
+      const discordUser = await fetchDiscordUser(tokenData.access_token);
+
+      // Find the bot's first guild
+      const guild = client.guilds.cache.first();
+      if (!guild) {
+        logger.error('[public-dashboard] Bot ist in keiner Guild.');
+        res.redirect('/auth/denied?reason=no_guild');
+        return;
+      }
+
+      // Verify guild membership using the bot cache (no extra OAuth scope needed)
+      let member;
+      try {
+        member = await guild.members.fetch(discordUser.id);
+      } catch {
+        member = null;
+      }
+      if (!member) {
+        logger.info(`[public-dashboard] Nicht in Guild: ${discordUser.username} (${discordUser.id})`);
+        res.redirect('/auth/denied?reason=not_in_guild');
+        return;
+      }
+
+      // Set public session
+      req.session.oauthState = undefined;
+      req.session.publicUser = {
+        userId:   discordUser.id,
+        username: discordUser.global_name ?? discordUser.username,
+        avatar:   discordUser.avatar,
+        guildId:  guild.id,
+      };
+
+      req.session.save((err) => {
+        if (err) {
+          logger.error('[public-dashboard] Session-Speicherfehler nach Auth:', err);
+          res.status(500).send('Session error. Try again.');
+          return;
+        }
+        logger.info(`[public-dashboard] Public Login: ${discordUser.username}`);
+        res.redirect('/public/');
+      });
+    } catch (err) {
+      logger.error('[public-dashboard] Public-Callback-Fehler:', err);
+      res.redirect('/auth/denied?reason=error');
+    }
+  });
+
+  // GET /auth/public/logout
+  router.get('/public/logout', (req, res) => {
+    const username = req.session.publicUser?.username ?? 'unknown';
+    // Only clear publicUser, preserve any admin session
+    req.session.publicUser = undefined;
+    req.session.save((err) => {
+      if (err) logger.warn('[public-dashboard] Logout-Fehler:', err);
+      else logger.info(`[public-dashboard] Public Logout: ${username}`);
+      res.redirect('/public/login.html');
+    });
   });
 
   return router;

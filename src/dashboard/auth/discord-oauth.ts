@@ -38,7 +38,7 @@ export function buildOAuthURL(state: string): string {
 }
 
 /** Exchange authorization code for access token. */
-export async function exchangeCode(code: string): Promise<DiscordTokenResponse> {
+export async function exchangeCode(code: string, redirectUri?: string): Promise<DiscordTokenResponse> {
   const res = await fetch(`${DISCORD_API}/oauth2/token`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -47,7 +47,7 @@ export async function exchangeCode(code: string): Promise<DiscordTokenResponse> 
       client_secret: env.DISCORD_CLIENT_SECRET,
       grant_type:    'authorization_code',
       code,
-      redirect_uri:  env.DISCORD_OAUTH_CALLBACK_URL,
+      redirect_uri:  redirectUri ?? env.DISCORD_OAUTH_CALLBACK_URL,
     }),
   });
   if (!res.ok) {
