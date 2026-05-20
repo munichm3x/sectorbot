@@ -61,6 +61,7 @@ export const env = {
   DASHBOARD_SESSION_SECRET:       process.env.DASHBOARD_SESSION_SECRET ?? 'change-me-in-production',
   DISCORD_CLIENT_SECRET:          process.env.DISCORD_CLIENT_SECRET ?? '',
   DISCORD_OAUTH_CALLBACK_URL:     process.env.DISCORD_OAUTH_CALLBACK_URL ?? 'http://localhost:3000/auth/callback',
+  PUBLIC_DASHBOARD_OAUTH_CALLBACK_URL: process.env.PUBLIC_DASHBOARD_OAUTH_CALLBACK_URL ?? 'http://localhost:3000/auth/public/callback',
   DASHBOARD_ALLOWED_USER_IDS:     envList('DASHBOARD_ALLOWED_USER_IDS'),
   DASHBOARD_ADMIN_ROLE_IDS:       envList('DASHBOARD_ADMIN_ROLE_IDS'),
   DASHBOARD_MOD_ROLE_IDS:         envList('DASHBOARD_MOD_ROLE_IDS'),

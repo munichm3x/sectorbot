@@ -27,6 +27,12 @@ declare module 'express-session' {
   interface SessionData {
     user?:       DashboardUser;
     oauthState?: string;
+    publicUser?: {
+      userId:   string;
+      username: string;
+      avatar:   string | null;
+      guildId:  string;
+    };
   }
 }
 
@@ -53,10 +59,14 @@ export function determinePermLevel(userId: string, roles: string[]): PermLevel |
 
 // ─── Middleware ────────────────────────────────────────────────────────────────
 
-/** Require an authenticated session. Redirects pages to /login.html; returns 401 for API routes. */
+/** Require an authenticated session. Redirects pages to /login.html; returns 401 for API routes.
+ * Note: when mounted at /api, Express strips the prefix so req.path is e.g. "/me", not "/api/me".
+ * We detect API context via req.baseUrl instead.
+ */
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!req.session.user) {
-    if (req.path.startsWith('/api/') || req.headers.accept?.includes('application/json')) {
+    const isApiRequest = req.baseUrl.startsWith('/api') || req.headers.accept?.includes('application/json');
+    if (isApiRequest) {
       res.status(401).json({ success: false, error: 'Not authenticated' });
     } else {
       res.redirect('/login.html');
