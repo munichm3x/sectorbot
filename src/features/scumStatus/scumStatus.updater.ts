@@ -6,6 +6,8 @@ import {
 import { queryServer } from './scumStatus.service';
 import { buildStatusEmbed } from './scumStatus.embed';
 import { logger } from '../../utils/logger';
+import { insertServerStatusHistory } from '../../analytics/analytics.db';
+import { env } from '../../config/env';
 
 const MIN_INTERVAL_SECS = 30;
 
@@ -66,6 +68,18 @@ async function updateDashboard(guildId: string): Promise<void> {
     }
 
     const result = await queryServer(config.host, config.query_port);
+
+    // Record to analytics history
+    if (env.ANALYTICS_ENABLED) {
+      try {
+        if (result.online) {
+          insertServerStatusHistory(guildId, true, result.players, result.maxPlayers, result.ping, null);
+        } else {
+          insertServerStatusHistory(guildId, false, null, null, null, null);
+        }
+      } catch { /* analytics must never crash the bot */ }
+    }
+
     const embed  = buildStatusEmbed(result, config.host, config.query_port);
 
     let msgId = config.message_id ?? null;

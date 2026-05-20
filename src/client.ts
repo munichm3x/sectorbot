@@ -7,6 +7,8 @@ import type {
 import { parseId } from './utils/ids';
 import { replyError } from './utils/errors';
 import { logger } from './utils/logger';
+import { trackInteractionEvent } from './analytics/analytics.db';
+import { env } from './config/env';
 
 export const client = new Client({
   intents: [
@@ -14,6 +16,7 @@ export const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates,
   ],
 });
 
@@ -30,7 +33,34 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.isChatInputCommand()) {
       const command = commands.get(interaction.commandName);
       if (!command) return;
-      await command.execute(interaction);
+      const t0 = Date.now();
+      let cmdSuccess = true;
+      try {
+        await command.execute(interaction);
+      } catch (err) {
+        cmdSuccess = false;
+        logger.error('Interaction-Fehler', err);
+        if (interaction.isRepliable()) {
+          await replyError(
+            interaction as Parameters<typeof replyError>[0],
+            'Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut.'
+          ).catch(() => void 0);
+        }
+      } finally {
+        if (env.ANALYTICS_ENABLED && interaction.guildId) {
+          try {
+            trackInteractionEvent({
+              guildId:         interaction.guildId,
+              interactionType: 'command',
+              commandName:     interaction.commandName,
+              feature:         interaction.commandName,
+              success:         cmdSuccess,
+              durationMs:      Date.now() - t0,
+              errorType:       cmdSuccess ? null : 'execution_error',
+            });
+          } catch { /* never let analytics crash the bot */ }
+        }
+      }
       return;
     }
 

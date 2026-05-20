@@ -1,6 +1,7 @@
 import { env } from './config/env';
 import { initDb } from './db/index';
 import { logger } from './utils/logger';
+import { setupAnalyticsTracking, setupAggregator } from './analytics/index';
 import {
   client, commands, buttonHandlers, selectMenuHandlers,
   channelSelectHandlers, roleSelectHandlers, modalHandlers,
@@ -39,6 +40,12 @@ import { ticketRenameCommand } from './commands/ticket-rename';
 import { ticketClaimCommand } from './commands/ticket-claim';
 import { oldmanChannelCommand } from './commands/oldman-channel';
 import { clearCommand } from './commands/clear';
+import { ticketArchivCommand } from './commands/ticket-archiv';
+
+// Ticket-Archiv Dashboard
+import { ticketArchivButtonHandler } from './interactions/buttons/ticketArchivHandler';
+import { ticketArchivSelectHandler } from './interactions/selectMenus/ticketArchivSelectHandler';
+import { ticketArchivModalHandler } from './interactions/modals/ticketArchivModalHandler';
 
 // Select Menus
 import { ticketCategoryHandler } from './interactions/selectMenus/ticketCategory';
@@ -67,20 +74,21 @@ for (const cmd of [
   setupCommand, configCommand, doctorCommand,
   ticketCloseCommand, ticketAddCommand, ticketRemoveCommand,
   ticketRenameCommand, ticketClaimCommand, oldmanChannelCommand, clearCommand,
-  streamerCommand,
+  streamerCommand, ticketArchivCommand,
 ]) {
   commands.set(cmd.data.name, cmd);
 }
 
 // Register select menus
 selectMenuHandlers.set(ticketCategoryHandler.prefix, ticketCategoryHandler);
+selectMenuHandlers.set(ticketArchivSelectHandler.prefix, ticketArchivSelectHandler);
 
 // Register buttons
 for (const handler of [
   ticketCloseHandler, ticketConfirmCloseHandler, ticketCancelCloseHandler,
   ticketClaimHandler, ticketAddPromptHandler, ticketRemovePromptHandler,
   acceptRulesHandler, setupButtonDispatcher, changelogButtonHandler,
-  scumStatusSetupHandler,
+  scumStatusSetupHandler, ticketArchivButtonHandler,
 ]) {
   buttonHandlers.set(handler.prefix, handler);
 }
@@ -95,6 +103,7 @@ modalHandlers.set(ticketRemoveModalHandler.prefix, ticketRemoveModalHandler);
 modalHandlers.set(setupAddCategoryModal.prefix, setupAddCategoryModal);
 modalHandlers.set(changelogModalHandler.prefix, changelogModalHandler);
 modalHandlers.set(scumStatusModalHandler.prefix, scumStatusModalHandler);
+modalHandlers.set(ticketArchivModalHandler.prefix, ticketArchivModalHandler);
 
 // Register streamer handlers (all under prefix 'str')
 buttonHandlers.set('str', {
@@ -162,4 +171,21 @@ setupChangelogDashboard(client);
 setupScumStatus(client);
 setupStreamerChecker(client);
 setupTicketAutoClose(client);
+
+if (env.ANALYTICS_ENABLED) {
+  setupAnalyticsTracking(client);
+  setupAggregator();
+}
+
 client.login(env.DISCORD_TOKEN);
+
+// Start web dashboard if enabled
+if (env.DASHBOARD_ENABLED) {
+  client.once('ready', () => {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore — dashboard/server is generated in a later task
+    import('./dashboard/server').then(({ startDashboard }: { startDashboard: (c: typeof client) => void }) => {
+      startDashboard(client);
+    }).catch((err: unknown) => logger.error('[dashboard] Startfehler:', err));
+  });
+}

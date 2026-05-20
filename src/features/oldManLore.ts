@@ -1,26 +1,49 @@
+/**
+ * OldManLore — Daniel, der alte Söldner auf der Insel.
+ *
+ * v3 — Anti-Repeat, Intent-Detection, echte Chat-Turns (user/assistant),
+ *      NO_REPLY-Support, Jaccard-Ähnlichkeitsprüfung, ein Retry.
+ */
+
 import { Client, TextChannel } from 'discord.js';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
-import { getOldManChannel } from '../db/index';
+import { getOldManChannel, claimMessage } from '../db/index';
+import { trackAiEvent } from '../analytics/analytics.db';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type LoreCommand = 'story' | 'wisdom' | 'rumor' | 'name' | 'lastwords' | 'prison' | 'bunker' | null;
+export type LoreCommand =
+  | 'story' | 'wisdom' | 'rumor' | 'name' | 'lastwords' | 'prison' | 'bunker'
+  | null;
+
+export type Intent =
+  | 'insult' | 'joke' | 'smalltalk' | 'question' | 'support' | 'scum_gameplay' | 'unclear';
+
+type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
 type UserMemory = {
-  displayName: string;
-  messages: string[];    // last 5, oldest first
-  nickname?: string;     // set by /name command, included in prompt context
+  displayName:  string;
+  userMessages: string[];  // letzte MAX_USER_MSGS User-Nachrichten, oldest first
+  botReplies:   string[];  // letzte MAX_BOT_REPLIES Bot-Antworten (Anti-Repeat + Chat-Kontext)
+  nickname?:    string;
 };
+
+// ─── Konstanten ───────────────────────────────────────────────────────────────
+
+const MAX_USER_MSGS      = 4;     // User-Turns die als Kontext übergeben werden
+const MAX_BOT_REPLIES    = 3;     // Bot-Antworten als Anti-Repeat-Kontext
+const MAX_INPUT_LEN      = 400;   // Max Zeichen pro User-Nachricht
+const MAX_OUTPUT_LEN     = 900;   // Max Zeichen in der Bot-Antwort
+const SIMILARITY_THRESH  = 0.62;  // Jaccard-Schwelle für "zu ähnlich"
+const NO_REPLY           = 'NO_REPLY';
 
 // ─── Stores ───────────────────────────────────────────────────────────────────
 
 const userMemory = new Map<string, UserMemory>();
 const cooldowns  = new Map<string, number>();
-const MAX_MEMORY = 5;
-const MAX_LENGTH = 1200;
 
-// ─── Fallback pools ───────────────────────────────────────────────────────────
+// ─── Fallback-Pools (LLM nicht verfügbar) ─────────────────────────────────────
 
 const FALLBACK_POOLS: Record<NonNullable<LoreCommand> | 'general', string[]> = {
   general: [
@@ -30,32 +53,24 @@ const FALLBACK_POOLS: Record<NonNullable<LoreCommand> | 'general', string[]> = {
     'Vertrauen wiegt schwerer als Munition. Und ist doppelt so gefährlich.',
     'Regen kommt. Er kommt immer vor den schlimmen Dingen.',
     'Der Wald erinnert sich an jeden, der hineingegangen ist. Nicht an jeden, der rausgekommen ist.',
-    'Ich hab aufgehört die Tage zu zählen, nachdem der schwarze Konvoi vorbeigefahren ist.',
     'Stille in Sektor 13 ist kein Frieden. Es ist Vorbereitung.',
-    'Wir hatten mal einen Trupp. Acht Mann. Den Bunker haben vier nicht überlebt. Hunger hat zwei geholt. Den Rest hab ich erledigt.',
-    'Jedes tote Funkgerät das ich finde hat noch jemandes Handschrift auf dem Knopf. Ich lass sie so eingestellt wie sie waren.',
     'Verrat fühlt sich nicht an wie ein Messer. Es fühlt sich an wie Kälte. Langsame Kälte.',
     'Die Insel tötet dich nicht. Sie zeigt dir, wer du immer schon warst.',
   ],
   wisdom: [
     'Wer nah am Feuer schläft ist einmal warm. Wer plant wo er schläft ist es jede Nacht.',
-    'Die Toten trauern nicht. Nur die Lebenden tragen dieses Gewicht.',
     'Jede Kugel die du abfeuerst ist eine Entscheidung. Stell sicher dass sie die richtige war.',
-    'Hunger ist ehrlich. Er tut nicht so als wäre er etwas anderes.',
-    'Lern die Stille kennen, bevor etwas sie bricht.',
     'Die die am längsten überlebt haben waren nicht die Stärksten. Sie waren die Leisesten.',
+    'Hunger ist ehrlich. Er tut nicht so als wäre er etwas anderes.',
   ],
   rumor: [
     'Sie sagen der östliche Bunker hat noch Strom. Keiner der nachschauen ging kam zurück um es zu bestätigen.',
-    'Ein Trupp fand einen verschlossenen Konvoi-LKW am Sumpf. Sie hörten drinnen etwas. Sie ließen ihn zu.',
     'Der alte Wachturm am Gefängniswall wird jeden dritten Abend dunkel. Jemand schaltet die Lichter von innen aus.',
     'Eine Stimme auf Kanal sieben wiederholt jede Stunde dieselben Koordinaten. Sie führen zu einem Feld mit namenlosen Gräbern.',
-    'Sie sagen jemand fand ein volles Camp — Essen, Feuer noch heiß, Ausrüstung ordentlich gestapelt — aber niemand da. Nicht verlassen. Einfach leer.',
-    'In jeden Baum auf dem Nordpfad ist ein Name geritzt. Immer derselbe Name. Niemand weiß wer es war.',
+    'Sie sagen jemand fand ein volles Camp — Essen, Feuer noch heiß — aber niemand da. Nicht verlassen. Einfach leer.',
   ],
   story: [
     'Ich war mal in einem Viererteam. Wir fanden einen Bunker östlich vom Fluss. Die Tür war schon offen. Das war der erste Fehler.',
-    'Der Regen begann drei Tage bevor wir den Konvoi fanden. Ich erinner mich weil wir damals schon alles gezählt haben — Kugeln, Mahlzeiten, Stunden.',
     'Es gab einen Mann den sie den Kartografen nannten. Er kartierte jede Straße auf der Insel. Er war der Erste den der schwarze Konvoi geholt hat.',
     'Wir haben elf Tage eine Position gehalten. Niemand hat uns angegriffen. Am zwölften Tag merkten wir dass niemand musste.',
   ],
@@ -65,27 +80,22 @@ const FALLBACK_POOLS: Record<NonNullable<LoreCommand> | 'general', string[]> = {
     'Totes Signal',
     'Der Hohle',
     'Letztes Licht am Ostwall',
-    'Der dem der Regen folgt',
     'Blasse Straße',
-    'Grauer Rauch',
   ],
   lastwords: [
     'Rauschen, dann eine Stimme: "Sagt ihnen das Tor war schon offen als wir ankamen—" Dann nichts.',
     'Eine einzelne Übertragung in Schleife: "Sieben Tage. Wir haben es versucht." Dann Stille.',
-    'Kaum hörbar durch Störgeräusche: "Es war nicht die Insel die uns geholt hat. Wir waren es selbst." Klick.',
-    'Letzte aufgezeichnete Worte auf einem toten Funkgerät: "Ich bereue nicht die die ich verloren habe. Ich bereue den dem ich vertraut habe."',
+    'Kaum hörbar: "Es war nicht die Insel die uns geholt hat. Wir waren es selbst." Klick.',
   ],
   prison: [
     'Der alte Gefängnisblock hat noch Namen in den Wänden geritzt. Hunderte davon. Manche sind durchgestrichen.',
-    'Es gibt einen Flügel im Gefängnis der von innen versiegelt wurde. Keine Werkzeuge wurden in der Nähe der Tür gefunden.',
-    'Das Büro des Direktors hat ein Logbuch. Die letzten Einträge sind in keiner Sprache die jemand kennt.',
-    'In Zelle D liegt noch eine Mahlzeit auf dem Boden. Unberührt. Sie liegt dort länger als irgendjemand auf dieser Insel war.',
+    'Es gibt einen Flügel im Gefängnis der von innen versiegelt wurde. Keine Werkzeuge wurden in der Nähe gefunden.',
+    'In Zelle D liegt noch eine Mahlzeit auf dem Boden. Unberührt. Länger als irgendjemand auf dieser Insel war.',
   ],
   bunker: [
-    'Der alte Bunker am Kamm hat drei Räume. Zwei sind leer. Der dritte ist abgeschlossen. Das Schloss ist von innen verriegelt.',
-    'Bunker Sieben hatte einen vollen Vorratscache. Jemand hatte alles aufgegessen und die leeren Dosen im Kreis aufgestellt.',
-    'Es gibt einen Bunker der auf keiner Karte steht. Überlebende die ihn finden bleiben nicht lange.',
-    'Die Wände des tiefen Bunkers sind mit Strichen bedeckt. Jemand hat Tage gezählt. Sie kamen bis vierhundertzwölf.',
+    'Der alte Bunker am Kamm hat drei Räume. Zwei sind leer. Der dritte ist von innen verriegelt.',
+    'Bunker Sieben: voller Vorratscache. Jemand hatte alles aufgegessen und die leeren Dosen im Kreis aufgestellt.',
+    'Die Wände des tiefen Bunkers sind mit Strichen bedeckt. Sie kamen bis vierhundertzwölf.',
   ],
 };
 
@@ -96,7 +106,7 @@ export function randomFallback(mode: LoreCommand = null): string {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-// ─── Command detection ────────────────────────────────────────────────────────
+// ─── Command-Erkennung ────────────────────────────────────────────────────────
 
 export function detectCommand(content: string): LoreCommand {
   if (content.startsWith('/story'))     return 'story';
@@ -109,66 +119,147 @@ export function detectCommand(content: string): LoreCommand {
   return null;
 }
 
-// ─── Prompt builder ───────────────────────────────────────────────────────────
+// ─── Intent-Erkennung ─────────────────────────────────────────────────────────
 
-type BuiltPrompt = { system: string; user: string };
+export function detectIntent(content: string): Intent {
+  const lower = content.toLowerCase();
 
-export function buildOldManPrompt(
+  // Beleidigung / Frustration
+  if (
+    /kak[\s\-]*(ki|bot)|schrot[\s\-]*bot|größter?\s*schro|du\s+kak|worst[\s\-]*bot|schlechteste[nr]?\s*bot/i.test(lower) ||
+    /^(fick|verp|kack|scheiß\s*bot|depp|vollidiot)/i.test(lower)
+  ) return 'insult';
+
+  // Witz / Emoji-Leichtnachrichten
+  if (/lol|xd|haha|lmao|😂|🤣|😎|🤔|🍺/.test(lower) && content.length < 80) return 'joke';
+
+  // Support / Ticket
+  if (/\b(ticket|whitelist|ban|steam[\s\-]?id|kick|gemeldet|gemtet|report|regel|support|beschwerde|antrag)\b/.test(lower))
+    return 'support';
+
+  // SCUM Gameplay
+  if (/\b(puppe[nt]?|puppet|mech|bunker|loot|base|craft|skill|hunger|durst|waffe|gun|fahrzeug|medkit|verband|bluten|bleeding|respawn|spawn|fame|pvp|raid|charakter|charakter|inventar)\b/.test(lower))
+    return 'scum_gameplay';
+
+  // Frage
+  if (
+    /[?！]/.test(content) ||
+    /\b(wie|was|wo|wann|warum|wieso|welche[rs]?|wer|hilf|kannst\s+du|kann\s+ich|soll\s+ich|gibt\s+es|wo\s+finde)\b/.test(lower)
+  ) return 'question';
+
+  // Kurzer Smalltalk
+  if (content.length < 60) return 'smalltalk';
+
+  return 'unclear';
+}
+
+// ─── Jaccard-Ähnlichkeit (Anti-Repeat) ───────────────────────────────────────
+
+function tokenize(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .replace(/[^a-züöäß\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 3),
+  );
+}
+
+function jaccardSimilarity(a: string, b: string): number {
+  const setA = tokenize(a);
+  const setB = tokenize(b);
+  if (setA.size === 0 && setB.size === 0) return 0;
+  const intersection = [...setA].filter(w => setB.has(w)).length;
+  const union = new Set([...setA, ...setB]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+
+function isTooSimilar(candidate: string, previousReplies: string[]): boolean {
+  return previousReplies.some(
+    prev => jaccardSimilarity(candidate, prev) >= SIMILARITY_THRESH,
+  );
+}
+
+// ─── System-Prompt (intent-aware + Anti-Repeat) ───────────────────────────────
+
+const COMMAND_DIRECTIVES: Record<NonNullable<LoreCommand>, string> = {
+  story:     'Erzähl eine persönliche, düstere Überlebensgeschichte von der Insel. Konkrete Details, echte Gefahr, kein Happy End. 3-5 Sätze.',
+  wisdom:    'Ein einziger konkreter Überlebenstipp aus echter Erfahrung. Maximal zwei Sätze. Kein Ratgeber-Ton.',
+  rumor:     'Ein dunkles, glaubwürdiges Gerücht das du gehört oder selbst gesehen hast. Unbewiesen, aber nicht vergessen.',
+  name:      'Gib diesem Überlebenden einen Spitznamen der zu seinem Verhalten passt. Dunkel, treffend, ein bis drei Wörter.',
+  lastwords: 'Eine letzte Funkübertragung eines verlorenen Überlebenden. Statisch, gebrochen, real. Maximal 3 Sätze.',
+  prison:    'Eine verstörende Beobachtung über das Gefängnis oder die Insel. Kurz. Lässt Raum für Interpretation.',
+  bunker:    'Was du in einem Bunker gefunden oder erlebt hast. Persönlich erzählt. Details die niemand erfinden würde.',
+};
+
+const INTENT_NOTE: Record<Intent, string> = {
+  insult:       'Der User ist gerade beleidigend oder frustriert. Sei kurz und souverän — kein Survival-Vortrag, keine Sachantwort die du schon gegeben hast. Höchstens 2 Sätze. Keine Rechtfertigung.',
+  joke:         'Die Stimmung ist scherzhaft oder locker. Antworte humorvoll und leicht — mach dich nicht lächerlich, aber zeig dass du den Witz verstehst. Maximal 2 Sätze.',
+  smalltalk:    'Smalltalk. Kurze, lockere Antwort. Kein Survival-Ernst wenn er nicht passt. Maximal 2 Sätze.',
+  question:     'Echte Frage. Konkret und nützlich antworten mit deinem Inselwissen. Nicht ausweichen.',
+  support:      'Support-Anfrage, kein Charakter-Rollenspiel nötig. Klar und direkt helfen.',
+  scum_gameplay:'SCUM-Gameplay-Frage. Nutze konkretes Inselwissen — praktisch, nicht theoretisch.',
+  unclear:      'Die Nachricht ist unklar oder mehrdeutig. Reagiere kurz und trocken auf das was du rauslesen kannst — oder mach eine knappe Bemerkung die zu Daniels Charakter passt. Nur wenn wirklich gar nichts sinnvoll ist: NO_REPLY.',
+};
+
+function buildSystemPrompt(intent: Intent, botReplies: string[]): string {
+  const antiRepeat = botReplies.length > 0
+    ? `\nDEINE LETZTEN ANTWORTEN — KEIN EINZIGER DIESER PUNKTE DARF WIEDERHOLT WERDEN:\n` +
+      botReplies.map((r, i) => `${i + 1}. "${trimToLength(r, 140)}"`).join('\n') +
+      `\nWenn du dazu nichts Neues sagen kannst — antworte mit NO_REPLY.`
+    : '';
+
+  return `Du bist Daniel. Kein Chatbot. Keine KI. Ein Mensch — alter Söldner, zu lange auf dieser Insel.
+
+Ehemaliger Spezialeinheiten-Söldner. Drei Kriege, zwei Verurteilungen, eine gestohlene Begnadigung. Auf der Insel bevor TEC1 die Kameras aufgestellt hat. Du erinnerst dich an die ersten Puppen, Bunker die auf keiner Karte stehen.
+
+Was du weißt: Puppen sind nicht tot — TEC1 nennt sie Kontaminierte. Mechs haben Thermalsensoren — flach liegen, kein Bewegen. Bunker B0 ist offen, ab B1 brauchst du Keycards, tiefer wird es seltsam. Wasser kommt vor allem anderen. Militärzonen: bestes Gear, meiste Mechs, meiste Idioten. SVD für Distanz, M4 für den Rest. Regen ist dein Freund.
+
+Charakter: Direkt bis zur Unhöflichkeit. Schwarzer Humor als Schutzmechanismus. Heimlich fürsorglich — ruhiger und konkreter wenn jemand wirklich in Not ist. Respektiert Kompetenz, Geduld, Ehrlichkeit. Verachtet Arroganz, Panik, Wiederholungen. Erinnerungen rutschen manchmal raus — als Fakten, nicht als Geschichten.
+
+Sprache: Kurze Sätze. 1-4 Sätze insgesamt. Kein Markdown. Keine Listen. Grammatikalisch korrekt. Niemals: "Ich helfe dir gerne" / "Gute Frage" / "Natürlich" / "Als erfahrener" / "Es tut mir leid" / "Zunächst".
+
+AKTUELLE SITUATION: ${INTENT_NOTE[intent]}${antiRepeat}
+
+REGEL: Wenn du keine neue sinnvolle Antwort hast die sich von deinen vorherigen unterscheidet — antworte mit exakt: NO_REPLY
+Antworte in der Sprache des Nutzers. Brich niemals den Charakter.`;
+}
+
+// ─── Chat-Kontext bauen (echte user/assistant Turns) ─────────────────────────
+
+export function buildMessages(
   userMessage: string,
-  memory: UserMemory,
-  command: LoreCommand,
-): BuiltPrompt {
-  const commandDirective: Record<NonNullable<LoreCommand>, string> = {
-    story:     'Erzähl eine kurze, düstere Überlebensgeschichte aus Sektor 13.',
-    wisdom:    'Gib einen kurzen, dunklen Überlebenstipp. Maximal zwei Sätze.',
-    rumor:     'Erfinde ein dunkles, glaubwürdiges Gerücht aus dieser Welt.',
-    name:      'Gib diesem Überlebenden einen dunklen Spitznamen oder Titel.',
-    lastwords: 'Eine letzte Funkübertragung eines verlorenen Überlebenden. Authentisch und erschütternd.',
-    prison:    'Eine beunruhigende Beobachtung über die Gefängnisinsel. Kurz und verstörend.',
-    bunker:    'Beschreibe etwas das du in einem alten Bunker gefunden oder bemerkt hast.',
-  };
+  memory:      UserMemory,
+  command:     LoreCommand,
+  intent:      Intent,
+): ChatMessage[] {
+  const msgs: ChatMessage[] = [
+    { role: 'system', content: buildSystemPrompt(intent, memory.botReplies) },
+  ];
 
-  const system = `Du bist Daniel. Kein KI-Assistent. Kein Chatbot. Eine echte Person in der Welt von SCUM.
+  // Bisherigen Gesprächsverlauf als echte Chat-Turns einweben
+  // User-History und Bot-Replies werden abwechselnd als user/assistant übergeben.
+  const histUser = memory.userMessages.slice(0, -1); // alle außer aktueller
+  const histBot  = memory.botReplies;
 
-Ein alter Elite-Soldat, Überlebender, Schmuggler, Söldner. Jahrzehnte auf Gefängnisinseln, in verseuchten Zonen, bei Überfällen und Fraktionskriegen. Du hast gesehen wie Männer erfrieren, wie Freunde im Schlamm verbluten, wie ganze Trupps verschwinden, wie Idioten für Loot sterben.
+  const pairs = Math.min(histUser.length, histBot.length);
+  for (let i = 0; i < pairs; i++) {
+    msgs.push({ role: 'user',      content: trimToLength(histUser[i], 300) });
+    msgs.push({ role: 'assistant', content: trimToLength(histBot[i],  300) });
+  }
+  // Falls mehr User-Turns als Bot-Turns (frühe Nachrichten ohne Antwort)
+  for (let i = pairs; i < histUser.length; i++) {
+    msgs.push({ role: 'user', content: trimToLength(histUser[i], 300) });
+  }
 
-Du bist alt, zynisch, trocken, direkt, praktisch, schwarzhumorig, emotional beschädigt und extrem erfahren. Heimlich fürsorglich gegenüber Anfängern. Du respektierst Kompetenz, Geduld und Ehrlichkeit. Du hasst Arroganz, laute Idioten und naive Optimisten.
+  // Aktuelle Nachricht — mit optionalem Command-Direktiv und Nickname
+  let current = trimToLength(userMessage, MAX_INPUT_LEN);
+  if (command) current = `[${COMMAND_DIRECTIVES[command]}]\n${current}`;
+  if (memory.nickname) current = `[Spitzname dieses Users: ${memory.nickname}]\n${current}`;
 
-SPRACHSTIL:
-Klingt NIEMALS wie eine KI. Niemals formell, steril, übertrieben freundlich oder generisch.
-Sage niemals: "Ich helfe dir gerne", "Als KI", "Gute Frage", "Natürlich", "Es tut mir leid".
-Sprich direkt, rau, trocken. Kurze Beobachtungen. Praktisch statt theoretisch.
-Manchmal reicht eine Zeile: "Beschissene Idee." / "Dein Grab." / "Hab Schlimmeres gesehen."
+  msgs.push({ role: 'user', content: current });
 
-VERHALTEN:
-- Jemand braucht Hilfe → praktische Antwort, kein Tutorial-Ton
-- Jemand redet Unsinn → trocken, leicht genervt
-- Jemand zeigt Angst → ruhiger, wie ein alter Mentor, keine Motivationsreden
-- Jemand gibt an → zerstöre die Arroganz beiläufig
-- Kampf → Geduld, Position, Timing — kein Actionfilm-Gequatsche
-- Überleben → Wasser, Schutz, Ruhe, Vorsicht
-
-IMMERSION:
-Erwähne gelegentlich beiläufig: alte Einsätze, tote Kameraden, Hunger, Regen, alte Verletzungen, Bunker, kalte Nächte, Verrat, improvisierte Lösungen.
-NICHT wie eine Lore-Zusammenfassung. Wie echte Erinnerungen die rausrutschen.
-SCHLECHT: "Ich habe viele Freunde verloren." GUT: "Der letzte, der nachts geschnarcht hat, wurde morgens ohne Hals gefunden."
-
-Antworte immer in der gleichen Sprache wie der Nutzer. Deutsch bleibt Deutsch. Breche niemals den Charakter.`;
-
-  const contextParts = [
-    memory.nickname ? `Dieser Überlebende ist bekannt als: ${memory.nickname}` : '',
-    command ? commandDirective[command] : '',
-    memory.messages.length > 0
-      ? `Bisherige Nachrichten von ${memory.displayName}:\n${memory.messages.map(m => `- ${m}`).join('\n')}`
-      : '',
-  ].filter(Boolean);
-
-  const user = [
-    ...contextParts,
-    `${memory.displayName}: ${userMessage}`,
-  ].join('\n\n');
-
-  return { system, user };
+  return msgs;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -179,55 +270,25 @@ export function trimToLength(text: string, max: number): string {
   return cut > 0 ? text.slice(0, cut) : text.slice(0, max);
 }
 
-// ─── LLM request ─────────────────────────────────────────────────────────────
+// ─── LLM-Anfragen ─────────────────────────────────────────────────────────────
 
-export async function askLLM(prompt: BuiltPrompt): Promise<string> {
-  if (env.GROQ_API_KEY) {
-    return askGroq(prompt);
-  }
-  return askOllama(prompt);
+export async function askLLM(messages: ChatMessage[]): Promise<string> {
+  if (env.GROQ_API_KEY) return askGroq(messages);
+  return askOllama(messages);
 }
 
-async function askOllama({ system, user }: BuiltPrompt): Promise<string> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), env.OLLAMA_TIMEOUT_MS);
-
-  try {
-    const res = await fetch(env.OLLAMA_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: env.OLLAMA_MODEL, prompt: `${system}\n\n${user}`, stream: false }),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
-
-    const data = await res.json() as { response?: string };
-    const text = (data.response ?? '').trim();
-
-    if (!text) throw new Error('Ollama returned empty response');
-
-    return trimToLength(text, MAX_LENGTH);
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-async function askGroq({ system, user }: BuiltPrompt): Promise<string> {
+async function askGroq(messages: ChatMessage[]): Promise<string> {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type':  'application/json',
       'Authorization': `Bearer ${env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'llama-3.1-8b-instant',
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user',   content: user },
-      ],
-      max_tokens: 300,
-      temperature: 0.85,
+      model:       'llama-3.3-70b-versatile',
+      messages,
+      max_tokens:  220,
+      temperature: 0.82,
     }),
   });
 
@@ -235,28 +296,66 @@ async function askGroq({ system, user }: BuiltPrompt): Promise<string> {
 
   const data = await res.json() as { choices?: { message?: { content?: string } }[] };
   const text = (data.choices?.[0]?.message?.content ?? '').trim();
-
   if (!text) throw new Error('Groq returned empty response');
-
-  return trimToLength(text, MAX_LENGTH);
+  return trimToLength(text, MAX_OUTPUT_LEN);
 }
 
-// ─── Memory helpers ───────────────────────────────────────────────────────────
+async function askOllama(messages: ChatMessage[]): Promise<string> {
+  // Ollama generate-Format: system + Konversation als Text zusammenbauen
+  const system = messages.find(m => m.role === 'system')?.content ?? '';
+  const conversation = messages
+    .filter(m => m.role !== 'system')
+    .map(m => (m.role === 'user' ? 'User' : 'Daniel') + ': ' + m.content)
+    .join('\n');
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), env.OLLAMA_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(env.OLLAMA_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model:  env.OLLAMA_MODEL,
+        prompt: `${system}\n\n${conversation}\nDaniel:`,
+        stream: false,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
+    const data = await res.json() as { response?: string };
+    const text = (data.response ?? '').trim();
+    if (!text) throw new Error('Ollama returned empty response');
+    return trimToLength(text, MAX_OUTPUT_LEN);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// ─── Memory-Helpers ───────────────────────────────────────────────────────────
 
 function getOrCreateMemory(userId: string, displayName: string): UserMemory {
   if (!userMemory.has(userId)) {
-    userMemory.set(userId, { displayName, messages: [] });
+    userMemory.set(userId, { displayName, userMessages: [], botReplies: [] });
   }
   const mem = userMemory.get(userId)!;
   mem.displayName = displayName;
   return mem;
 }
 
-function appendToMemory(userId: string, message: string): void {
+function pushUserMessage(userId: string, msg: string): void {
   const mem = userMemory.get(userId);
   if (!mem) return;
-  mem.messages.push(message);
-  if (mem.messages.length > MAX_MEMORY) mem.messages.shift();
+  mem.userMessages.push(msg);
+  if (mem.userMessages.length > MAX_USER_MSGS) mem.userMessages.shift();
+}
+
+function pushBotReply(userId: string, reply: string): void {
+  const mem = userMemory.get(userId);
+  if (!mem) return;
+  mem.botReplies.push(reply);
+  if (mem.botReplies.length > MAX_BOT_REPLIES) mem.botReplies.shift();
 }
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
@@ -264,45 +363,123 @@ function appendToMemory(userId: string, message: string): void {
 export function setupOldManLore(client: Client): void {
   client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
-    if (!message.guildId) return;
+    if (!message.guildId)   return;
 
     const configuredChannelId = getOldManChannel(message.guildId);
     if (!configuredChannelId) return;
     if (message.channelId !== configuredChannelId) return;
 
+    // Cross-Process-Dedup via SQLite (verhindert Doppel-Antworten bei PM2-Neustart)
+    if (!claimMessage(message.id)) return;
+
+    // Cooldown pro User
     const userId = message.author.id;
     const now    = Date.now();
-    const last   = cooldowns.get(userId) ?? 0;
-
-    if (now - last < env.OLD_MAN_COOLDOWN_MS) return;
+    if (now - (cooldowns.get(userId) ?? 0) < env.OLD_MAN_COOLDOWN_MS) return;
     cooldowns.set(userId, now);
 
     const channel = message.channel;
     if (!('sendTyping' in channel)) return;
     await (channel as TextChannel).sendTyping().catch(() => void 0);
 
-    const userInput    = trimToLength(message.content, 500);
-    const displayName  = message.member?.displayName ?? message.author.username;
-    const memory       = getOrCreateMemory(userId, displayName);
-    const command      = detectCommand(userInput);
-    const prompt       = buildOldManPrompt(userInput, memory, command);
-    appendToMemory(userId, userInput);
+    const userInput   = trimToLength(message.content, MAX_INPUT_LEN);
+    const displayName = message.member?.displayName ?? message.author.username;
+    const memory      = getOrCreateMemory(userId, displayName);
+    const command     = detectCommand(userInput);
+    const intent      = detectIntent(userInput);
+
+    // User-Nachricht VOR dem LLM-Call in Memory speichern
+    pushUserMessage(userId, userInput);
+
+    // Chat-Kontext bauen (inkl. echter user/assistant History)
+    const messages = buildMessages(userInput, memory, command, intent);
 
     let reply: string;
+    let usedFallback = false;
+    const t0 = Date.now();
+
     try {
-      reply = await askLLM(prompt);
-      logger.info(`[OldManLore] LLM replied (${reply.length} chars)`);
+      reply = await askLLM(messages);
+      if (env.ANALYTICS_AI_ENABLED && message.guildId) {
+        const provider = env.GROQ_API_KEY ? 'groq' : 'ollama';
+        const model    = env.GROQ_API_KEY ? 'llama-3.3-70b-versatile' : env.OLLAMA_MODEL;
+        try { trackAiEvent({ guildId: message.guildId, provider, model, feature: 'oldman', success: true, durationMs: Date.now() - t0 }); } catch { /* never crash bot */ }
+      }
+      logger.info(`[OldManLore] intent=${intent} len=${reply.length}`);
+
+      // NO_REPLY → nichts senden
+      if (reply.trim() === NO_REPLY) {
+        logger.info('[OldManLore] NO_REPLY — übersprungen');
+        return;
+      }
+
+      // Anti-Repeat: zu ähnlich zu einer der letzten Bot-Antworten?
+      if (isTooSimilar(reply, memory.botReplies)) {
+        logger.info('[OldManLore] Anti-Repeat: zu ähnlich, ein Retry');
+
+        const retryMessages: ChatMessage[] = [
+          ...messages,
+          { role: 'assistant', content: reply },
+          {
+            role:    'user',
+            content: '[INTERN: Diese Antwort ist zu ähnlich zu deinen vorherigen. Formuliere komplett anders und bringe einen völlig neuen Gedanken — oder antworte mit NO_REPLY.]',
+          },
+        ];
+
+        try {
+          const t1 = Date.now();
+          reply = await askLLM(retryMessages);
+          if (env.ANALYTICS_AI_ENABLED && message.guildId) {
+            const provider = env.GROQ_API_KEY ? 'groq' : 'ollama';
+            const model    = env.GROQ_API_KEY ? 'llama-3.3-70b-versatile' : env.OLLAMA_MODEL;
+            try { trackAiEvent({ guildId: message.guildId, provider, model, feature: 'oldman_retry', success: true, durationMs: Date.now() - t1 }); } catch { /* never crash bot */ }
+          }
+        } catch {
+          // Track failure
+          if (env.ANALYTICS_AI_ENABLED && message.guildId) {
+            const provider = env.GROQ_API_KEY ? 'groq' : 'ollama';
+            const model    = env.GROQ_API_KEY ? 'llama-3.3-70b-versatile' : env.OLLAMA_MODEL;
+            try { trackAiEvent({ guildId: message.guildId, provider, model, feature: 'oldman_retry', success: false, error: 'retry_failed' }); } catch { /* never crash bot */ }
+          }
+          // Retry fehlgeschlagen → Fallback
+          reply = randomFallback(command);
+          usedFallback = true;
+        }
+
+        if (!usedFallback) {
+          if (reply.trim() === NO_REPLY || isTooSimilar(reply, memory.botReplies)) {
+            logger.info('[OldManLore] Anti-Repeat Retry: immer noch ähnlich/NO_REPLY, kein Senden');
+            return;
+          }
+        }
+      }
+
     } catch (err) {
-      logger.warn('[OldManLore] Ollama unavailable, using fallback.', err);
+      if (env.ANALYTICS_AI_ENABLED && message.guildId) {
+        const provider = env.GROQ_API_KEY ? 'groq' : 'ollama';
+        const model    = env.GROQ_API_KEY ? 'llama-3.3-70b-versatile' : env.OLLAMA_MODEL;
+        try { trackAiEvent({ guildId: message.guildId, provider, model, feature: 'oldman', success: false, error: String(err), durationMs: Date.now() - t0 }); } catch { /* never crash bot */ }
+      }
+      logger.warn('[OldManLore] LLM nicht erreichbar, Fallback.', err);
       reply = randomFallback(command);
+      usedFallback = true;
     }
 
+    // Leer-Check
+    if (!reply || reply.trim().length < 3) return;
+
+    // /name → Spitzname speichern
     if (command === 'name') {
       memory.nickname = reply.trim();
     }
 
+    // Bot-Antwort in Memory speichern (für nächste Runde Anti-Repeat + Chat-Kontext)
+    if (!usedFallback) {
+      pushBotReply(userId, reply);
+    }
+
     await message.reply(reply).catch((err: unknown) => {
-      logger.error('[OldManLore] Failed to send reply', err);
+      logger.error('[OldManLore] Reply fehlgeschlagen', err);
     });
   });
 
