@@ -3,11 +3,11 @@
 // Reuses existing analytics DB functions; no new queries needed.
 
 import { Router } from 'express';
+import type { Client } from 'discord.js';
 import {
   getMessagesByDay, getMessagesByChannel, getMessagesTotal,
   getVoiceByDay, getVoiceByChannel, getVoiceTotal, getStreamTotal,
   getMemberEventsByDay,
-  getAiByDay, getAiByFeature, getAiTotal,
   getServerStatusHistory, getPeakPlayers,
 } from '../../../analytics/analytics.db';
 import { getDb } from '../../../db/index';
@@ -25,11 +25,17 @@ function parsePeriod(period?: string): number {
   return now - 7 * 86400;
 }
 
-export const publicAnalyticsRouter = Router();
+function resolveGuildId(req: { session: { publicUser?: { guildId: string } } }, client: Client): string | null {
+  return req.session.publicUser?.guildId ?? client.guilds.cache.first()?.id ?? null;
+}
+
+export function buildPublicAnalyticsRouter(client: Client): Router {
+const publicAnalyticsRouter = Router();
 
 publicAnalyticsRouter.get('/messages', (req, res) => {
   try {
-    const guildId = req.session.publicUser!.guildId;
+    const guildId = resolveGuildId(req, client);
+    if (!guildId) { res.json({ success: true, data: { byDay: [], byChannel: [], total: 0, since: 0 } }); return; }
     const since   = parsePeriod(req.query.period as string);
     res.json({ success: true, data: { byDay: getMessagesByDay(guildId, since), byChannel: getMessagesByChannel(guildId, since), total: getMessagesTotal(guildId, since), since } });
   } catch { res.status(500).json({ success: false, error: 'Internal error' }); }
@@ -37,7 +43,8 @@ publicAnalyticsRouter.get('/messages', (req, res) => {
 
 publicAnalyticsRouter.get('/voice', (req, res) => {
   try {
-    const guildId = req.session.publicUser!.guildId;
+    const guildId = resolveGuildId(req, client);
+    if (!guildId) { res.json({ success: true, data: { byDay: [], byChannel: [], totalSeconds: 0, totalStreamSeconds: 0, since: 0 } }); return; }
     const since   = parsePeriod(req.query.period as string);
     res.json({ success: true, data: { byDay: getVoiceByDay(guildId, since), byChannel: getVoiceByChannel(guildId, since), totalSeconds: getVoiceTotal(guildId, since), totalStreamSeconds: getStreamTotal(guildId, since), since } });
   } catch { res.status(500).json({ success: false, error: 'Internal error' }); }
@@ -45,7 +52,8 @@ publicAnalyticsRouter.get('/voice', (req, res) => {
 
 publicAnalyticsRouter.get('/growth', (req, res) => {
   try {
-    const guildId = req.session.publicUser!.guildId;
+    const guildId = resolveGuildId(req, client);
+    if (!guildId) { res.json({ success: true, data: { byDay: [], since: 0 } }); return; }
     const since   = parsePeriod(req.query.period as string);
     res.json({ success: true, data: { byDay: getMemberEventsByDay(guildId, since), since } });
   } catch { res.status(500).json({ success: false, error: 'Internal error' }); }
@@ -53,7 +61,8 @@ publicAnalyticsRouter.get('/growth', (req, res) => {
 
 publicAnalyticsRouter.get('/tickets', (req, res) => {
   try {
-    const guildId = req.session.publicUser!.guildId;
+    const guildId = resolveGuildId(req, client);
+    if (!guildId) { res.json({ success: true, data: { total: 0, open: 0, closed: 0, byCategory: [], byDay: [], avgResolutionSecs: null, since: 0 } }); return; }
     const since   = parsePeriod(req.query.period as string);
     const db      = getDb();
     const total   = (db.prepare(`SELECT COUNT(*) AS n FROM tickets WHERE guild_id = ?`).get(guildId) as { n: number }).n;
@@ -68,7 +77,8 @@ publicAnalyticsRouter.get('/tickets', (req, res) => {
 
 publicAnalyticsRouter.get('/server-status', (req, res) => {
   try {
-    const guildId   = req.session.publicUser!.guildId;
+    const guildId   = resolveGuildId(req, client);
+    if (!guildId) { res.json({ success: true, data: { history: [], peak: 0, uptimePct: null, since: 0 } }); return; }
     const since     = parsePeriod(req.query.period as string);
     const history   = getServerStatusHistory(guildId, since, 500);
     const peak      = getPeakPlayers(guildId, since);
@@ -79,10 +89,5 @@ publicAnalyticsRouter.get('/server-status', (req, res) => {
   } catch { res.status(500).json({ success: false, error: 'Internal error' }); }
 });
 
-publicAnalyticsRouter.get('/ai', (req, res) => {
-  try {
-    const guildId = req.session.publicUser!.guildId;
-    const since   = parsePeriod(req.query.period as string);
-    res.json({ success: true, data: { byFeature: getAiByFeature(guildId, since), byDay: getAiByDay(guildId, since), total: getAiTotal(guildId, since), since } });
-  } catch { res.status(500).json({ success: false, error: 'Internal error' }); }
-});
+return publicAnalyticsRouter;
+}

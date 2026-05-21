@@ -37,7 +37,7 @@ publicTicketsRouter.get('/mine', (req, res) => {
 
     const total   = (db.prepare(`SELECT COUNT(*) AS n FROM tickets ${baseWhere}`).get(...params) as { n: number }).n;
     const tickets = db.prepare(
-      `SELECT id, guild_id, status, category, created_at, closed_at, summary, username_snapshot, closed_by_username_snapshot
+      `SELECT id, guild_id, status, category, created_at, closed_at
        FROM tickets ${baseWhere}
        ORDER BY created_at DESC LIMIT ? OFFSET ?`
     ).all(...params, limit, offset);
@@ -60,7 +60,7 @@ publicTicketsRouter.get('/mine/:id', (req, res) => {
     }
     const db     = getDb();
     const ticket = db.prepare(
-      `SELECT id, guild_id, status, category, created_at, closed_at, summary, username_snapshot, closed_by_username_snapshot
+      `SELECT id, guild_id, status, category, created_at, closed_at
        FROM tickets
        WHERE id = ? AND guild_id = ? AND opener_user_id = ?`
     ).get(id, guildId, userId);
