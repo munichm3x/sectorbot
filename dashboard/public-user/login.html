@@ -6,56 +6,87 @@
   <title>Login — SECTOR 13 Community</title>
   <link rel="stylesheet" href="/public/css/dashboard.css">
   <style>
-    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(181,22,47,0.08) 0%, transparent 60%),
+        var(--bg);
+    }
+    .login-wrap {
+      width: 100%;
+      max-width: 380px;
+      padding: 1.5rem;
+    }
     .login-box {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 2.5rem 2rem;
-      width: 100%;
-      max-width: 360px;
+      border-radius: var(--radius-xl);
+      padding: 2.5rem 2rem 2rem;
       text-align: center;
+      box-shadow: var(--shadow), 0 0 60px rgba(181,22,47,0.06);
     }
     .login-logo {
-      width: 56px; height: 56px;
-      background: var(--accent);
-      border-radius: 12px;
+      width: 64px; height: 64px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-muted) 100%);
+      border-radius: var(--radius-lg);
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.5rem; font-weight: 900; color: #fff;
-      margin: 0 auto 1.25rem;
+      font-size: 1rem; font-weight: 900; color: #fff;
+      letter-spacing: -0.02em;
+      margin: 0 auto 1.5rem;
+      box-shadow: var(--shadow-accent);
     }
-    .login-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem; }
-    .login-sub   { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.75rem; }
+    .login-title {
+      font-size: 1.2rem; font-weight: 800; margin-bottom: 0.3rem;
+      letter-spacing: -0.02em;
+    }
+    .login-sub {
+      font-size: 0.8rem; color: var(--text-muted); margin-bottom: 2rem;
+      line-height: 1.5;
+    }
     .discord-btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem;
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.65rem;
       width: 100%;
       background: #5865f2;
       color: #fff;
       border: none;
       border-radius: var(--radius);
-      padding: 0.7rem 1rem;
+      padding: 0.75rem 1rem;
       font-size: 0.9rem;
       font-weight: 700;
       cursor: pointer;
       text-decoration: none;
-      transition: background 0.15s;
+      transition: background 0.15s, transform 0.1s;
     }
-    .discord-btn:hover { background: #4752c4; text-decoration: none; }
-    .login-note { font-size: 0.72rem; color: var(--text-muted); margin-top: 1.25rem; }
+    .discord-btn:hover { background: #4752c4; text-decoration: none; transform: translateY(-1px); }
+    .discord-btn:active { transform: translateY(0); }
+    .login-divider {
+      border: none;
+      border-top: 1px solid var(--border-subtle);
+      margin: 1.5rem 0 1rem;
+    }
+    .login-note {
+      font-size: 0.72rem; color: var(--text-muted); line-height: 1.6;
+    }
   </style>
 </head>
 <body>
-  <div class="login-box">
-    <div class="login-logo">S</div>
-    <div class="login-title">SECTOR 13 Community</div>
-    <div class="login-sub">Community Dashboard — für alle SECTOR 13 Mitglieder</div>
-    <a href="/auth/public/login" class="discord-btn">
-      <svg width="20" height="15" viewBox="0 0 71 55" fill="white" xmlns="http://www.w3.org/2000/svg">
-        <path d="M60.1 4.9A58.5 58.5 0 0 0 45.5 0.5a40 40 0 0 0-1.8 3.7 54.2 54.2 0 0 0-16.3 0 40 40 0 0 0-1.8-3.7A58.3 58.3 0 0 0 11 4.9C1.6 19 -1 32.8 0.3 46.4a58.9 58.9 0 0 0 17.9 9 44.1 44.1 0 0 0 3.8-6.2 38.3 38.3 0 0 1-6-2.9l1.5-1.1a41.9 41.9 0 0 0 36 0l1.5 1.1a38.4 38.4 0 0 1-6 2.9 44.5 44.5 0 0 0 3.8 6.2 58.7 58.7 0 0 0 17.9-9C72 32.2 68.8 18.5 60.1 4.9zM23.7 38a6.7 6.7 0 0 1-6.3-7 6.7 6.7 0 0 1 6.3-7 6.7 6.7 0 0 1 6.3 7 6.7 6.7 0 0 1-6.3 7zm23.6 0a6.7 6.7 0 0 1-6.3-7 6.7 6.7 0 0 1 6.3-7 6.7 6.7 0 0 1 6.3 7 6.7 6.7 0 0 1-6.3 7z"/>
-      </svg>
-      Mit Discord anmelden
-    </a>
-    <p class="login-note">Nur für SECTOR 13 Discord-Mitglieder.<br>Deine Session läuft nach 24h ab.</p>
+  <div class="login-wrap">
+    <div class="login-box">
+      <div class="login-logo">S13</div>
+      <div class="login-title">SECTOR 13 Community</div>
+      <div class="login-sub">Community Dashboard — für alle SECTOR 13 Mitglieder</div>
+      <a href="/auth/public/login" class="discord-btn">
+        <svg width="20" height="15" viewBox="0 0 71 55" fill="white" xmlns="http://www.w3.org/2000/svg">
+          <path d="M60.1 4.9A58.5 58.5 0 0 0 45.5 0.5a40 40 0 0 0-1.8 3.7 54.2 54.2 0 0 0-16.3 0 40 40 0 0 0-1.8-3.7A58.3 58.3 0 0 0 11 4.9C1.6 19 -1 32.8 0.3 46.4a58.9 58.9 0 0 0 17.9 9 44.1 44.1 0 0 0 3.8-6.2 38.3 38.3 0 0 1-6-2.9l1.5-1.1a41.9 41.9 0 0 0 36 0l1.5 1.1a38.4 38.4 0 0 1-6 2.9 44.5 44.5 0 0 0 3.8 6.2 58.7 58.7 0 0 0 17.9-9C72 32.2 68.8 18.5 60.1 4.9zM23.7 38a6.7 6.7 0 0 1-6.3-7 6.7 6.7 0 0 1 6.3-7 6.7 6.7 0 0 1 6.3 7 6.7 6.7 0 0 1-6.3 7zm23.6 0a6.7 6.7 0 0 1-6.3-7 6.7 6.7 0 0 1 6.3-7 6.7 6.7 0 0 1 6.3 7 6.7 6.7 0 0 1-6.3 7z"/>
+        </svg>
+        Mit Discord anmelden
+      </a>
+      <hr class="login-divider">
+      <p class="login-note">Für alle Mitglieder des SECTOR 13 Discord-Servers.<br>Deine Session läuft nach 24h ab.</p>
+    </div>
   </div>
 </body>
 </html>

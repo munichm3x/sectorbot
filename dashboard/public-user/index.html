@@ -6,18 +6,13 @@
   <title>SECTOR 13 Community</title>
   <link rel="stylesheet" href="/public/css/dashboard.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <style>
-    .tab-bar { display: flex; gap: .5rem; flex-wrap: wrap; margin: 1rem 0; }
-    .tab-btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .4rem .9rem; color: var(--text-muted); cursor: pointer; font-size: .85rem; transition: all .15s; }
-    .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .tab-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); }
-  </style>
 </head>
 <body>
 <div id="app">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <div class="logo-mark">S</div>
+      <div class="logo-mark" style="font-size:0.75rem">S13</div>
       <div>
         <div class="logo-text">SECTOR 13</div>
         <div class="logo-sub">Community</div>
@@ -32,12 +27,12 @@
 
       <div class="nav-section">Server Analytics</div>
       <div class="nav-item" data-page="analytics">
-        <span class="nav-icon">📈</span> Analytics
+        <span class="nav-icon">▲</span> Analytics
       </div>
 
       <div class="nav-section">Mein Bereich</div>
       <div class="nav-item" data-page="tickets">
-        <span class="nav-icon">🎫</span> Meine Tickets
+        <span class="nav-icon">⬡</span> Meine Tickets
       </div>
     </nav>
 
@@ -51,6 +46,7 @@
 
   <main class="main">
     <header class="topbar">
+      <button class="topbar-toggle" id="sidebar-toggle" aria-label="Navigation öffnen">☰</button>
       <div class="topbar-title" id="page-title">Overview</div>
       <div class="topbar-right">
         <div class="topbar-user">

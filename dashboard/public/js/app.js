@@ -155,6 +155,33 @@ document.getElementById('sidebar-nav').addEventListener('click', (e) => {
   if (item?.dataset.page) navigateTo(item.dataset.page);
 });
 
+// ── Mobile sidebar toggle ─────────────────────────────────────────────────────
+(function() {
+  const toggleBtn = document.getElementById('sidebar-toggle');
+  const sidebar   = document.getElementById('sidebar');
+  const overlay   = document.getElementById('sidebar-overlay');
+  if (!toggleBtn || !sidebar) return;
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    if (overlay) overlay.classList.add('visible');
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    if (overlay) overlay.classList.remove('visible');
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+  });
+  if (overlay) overlay.addEventListener('click', closeSidebar);
+
+  // Close sidebar on nav item click (mobile)
+  document.getElementById('sidebar-nav').addEventListener('click', (e) => {
+    if (e.target.closest('.nav-item') && window.innerWidth <= 768) closeSidebar();
+  });
+})();
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
   try {
