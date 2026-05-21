@@ -62,9 +62,10 @@ window['page-analytics'] = {
     const self = this;
     body.innerHTML = `
       <div id="msg-stats" class="stat-grid" style="margin:1rem 0"></div>
+      <div class="section-header" style="margin-top:1.5rem"><div class="section-title">Verlauf & Aufschlüsselung</div></div>
       <div class="grid-2">
-        <div class="chart-card"><div class="card-title" style="margin-bottom:.75rem">Nachrichten pro Tag</div><div style="height:220px"><canvas id="msg-daily-chart"></canvas></div></div>
-        <div class="chart-card"><div class="card-title" style="margin-bottom:.75rem">Top Channels</div><div style="height:220px"><canvas id="msg-channel-chart"></canvas></div></div>
+        <div class="chart-card"><div class="card-header"><div class="card-title">Nachrichten pro Tag</div></div><div style="height:220px"><canvas id="msg-daily-chart"></canvas></div></div>
+        <div class="chart-card"><div class="card-header"><div class="card-title">Top Channels</div></div><div style="height:220px"><canvas id="msg-channel-chart"></canvas></div></div>
       </div>
     `;
     self._periodBar('messages', body);
@@ -72,7 +73,7 @@ window['page-analytics'] = {
       const { data } = await API.messages(period);
       const { byDay, byChannel, total } = data;
       document.getElementById('msg-stats').innerHTML = `
-        <div class="stat-card"><div class="stat-label">Gesamt</div><div class="stat-value">${escapeHtml(fmt(total))}</div><div class="stat-sub">${escapeHtml(period)}</div></div>
+        <div class="stat-card accent"><div class="stat-label">Gesamt</div><div class="stat-value">${escapeHtml(fmt(total))}</div><div class="stat-sub">${escapeHtml(period)}</div></div>
         <div class="stat-card"><div class="stat-label">Aktive Channels</div><div class="stat-value">${escapeHtml(String(byChannel.length))}</div></div>
         <div class="stat-card"><div class="stat-label">Ø pro Tag</div><div class="stat-value">${byDay.length > 0 ? escapeHtml(fmt(Math.round(total / byDay.length))) : '—'}</div></div>
       `;
@@ -89,9 +90,10 @@ window['page-analytics'] = {
     const self = this;
     body.innerHTML = `
       <div id="voice-stats" class="stat-grid" style="margin:1rem 0"></div>
+      <div class="section-header" style="margin-top:1.5rem"><div class="section-title">Verlauf & Aufschlüsselung</div></div>
       <div class="grid-2">
-        <div class="chart-card"><div class="card-title" style="margin-bottom:.75rem">Voice-Minuten pro Tag</div><div style="height:220px"><canvas id="voice-daily-chart"></canvas></div></div>
-        <div class="chart-card"><div class="card-title" style="margin-bottom:.75rem">Top Channels</div><div style="height:220px"><canvas id="voice-channel-chart"></canvas></div></div>
+        <div class="chart-card"><div class="card-header"><div class="card-title">Voice-Minuten pro Tag</div></div><div style="height:220px"><canvas id="voice-daily-chart"></canvas></div></div>
+        <div class="chart-card"><div class="card-header"><div class="card-title">Top Channels</div></div><div style="height:220px"><canvas id="voice-channel-chart"></canvas></div></div>
       </div>
     `;
     self._periodBar('voice', body);
@@ -99,7 +101,7 @@ window['page-analytics'] = {
       const { data } = await API.voice(period);
       const { byDay, byChannel, totalSeconds } = data;
       document.getElementById('voice-stats').innerHTML = `
-        <div class="stat-card"><div class="stat-label">Gesamt</div><div class="stat-value">${escapeHtml(fmt(Math.round(totalSeconds / 60)))}</div><div class="stat-sub">Minuten</div></div>
+        <div class="stat-card accent"><div class="stat-label">Gesamt</div><div class="stat-value">${escapeHtml(fmt(Math.round(totalSeconds / 60)))}</div><div class="stat-sub">Minuten</div></div>
         <div class="stat-card"><div class="stat-label">Aktive Channels</div><div class="stat-value">${escapeHtml(String(byChannel.length))}</div></div>
         <div class="stat-card"><div class="stat-label">Ø pro Tag</div><div class="stat-value">${byDay.length > 0 ? escapeHtml(fmt(Math.round(totalSeconds / 60 / byDay.length))) : '—'}</div><div class="stat-sub">Minuten</div></div>
       `;
@@ -116,7 +118,8 @@ window['page-analytics'] = {
     const self = this;
     body.innerHTML = `
       <div id="growth-stats" class="stat-grid" style="margin:1rem 0"></div>
-      <div class="chart-card"><div class="card-title" style="margin-bottom:.75rem">Mitgliederentwicklung</div><div style="height:260px"><canvas id="growth-chart"></canvas></div></div>
+      <div class="section-header" style="margin-top:1.5rem"><div class="section-title">Verlauf & Aufschlüsselung</div></div>
+      <div class="chart-card"><div class="card-header"><div class="card-title">Mitgliederentwicklung</div></div><div style="height:260px"><canvas id="growth-chart"></canvas></div></div>
     `;
     self._periodBar('growth', body);
     try {
@@ -125,9 +128,9 @@ window['page-analytics'] = {
       const joins  = byDay.reduce((s, r) => s + (r.joins  ?? 0), 0);
       const leaves = byDay.reduce((s, r) => s + (r.leaves ?? 0), 0);
       document.getElementById('growth-stats').innerHTML = `
-        <div class="stat-card"><div class="stat-label">Beitritte</div><div class="stat-value">${escapeHtml(fmt(joins))}</div><div class="stat-sub">${escapeHtml(period)}</div></div>
-        <div class="stat-card"><div class="stat-label">Abgänge</div><div class="stat-value">${escapeHtml(fmt(leaves))}</div><div class="stat-sub">${escapeHtml(period)}</div></div>
-        <div class="stat-card"><div class="stat-label">Netto</div><div class="stat-value">${joins - leaves >= 0 ? '+' : ''}${escapeHtml(fmt(joins - leaves))}</div></div>
+        <div class="stat-card online"><div class="stat-label">Beitritte</div><div class="stat-value">${escapeHtml(fmt(joins))}</div><div class="stat-sub">${escapeHtml(period)}</div></div>
+        <div class="stat-card warning"><div class="stat-label">Abgänge</div><div class="stat-value">${escapeHtml(fmt(leaves))}</div><div class="stat-sub">${escapeHtml(period)}</div></div>
+        <div class="stat-card accent"><div class="stat-label">Netto</div><div class="stat-value">${joins - leaves >= 0 ? '+' : ''}${escapeHtml(fmt(joins - leaves))}</div></div>
       `;
       const wrap = document.getElementById('growth-chart')?.parentElement;
       if (byDay.length === 0) { wrap.innerHTML = emptyState(); }
@@ -145,9 +148,10 @@ window['page-analytics'] = {
     const self = this;
     body.innerHTML = `
       <div id="ticket-stats" class="stat-grid" style="margin:1rem 0"></div>
+      <div class="section-header" style="margin-top:1.5rem"><div class="section-title">Verlauf & Aufschlüsselung</div></div>
       <div class="grid-2">
-        <div class="chart-card"><div class="card-title" style="margin-bottom:.75rem">Tickets pro Tag</div><div style="height:220px"><canvas id="ticket-daily-chart"></canvas></div></div>
-        <div class="chart-card"><div class="card-title" style="margin-bottom:.75rem">Nach Kategorie</div><div style="height:220px"><canvas id="ticket-cat-chart"></canvas></div></div>
+        <div class="chart-card"><div class="card-header"><div class="card-title">Tickets pro Tag</div></div><div style="height:220px"><canvas id="ticket-daily-chart"></canvas></div></div>
+        <div class="chart-card"><div class="card-header"><div class="card-title">Nach Kategorie</div></div><div style="height:220px"><canvas id="ticket-cat-chart"></canvas></div></div>
       </div>
     `;
     self._periodBar('tickets', body);
@@ -155,8 +159,8 @@ window['page-analytics'] = {
       const { data } = await API.tickets(period);
       const { total, open, closed, byDay, byCategory } = data;
       document.getElementById('ticket-stats').innerHTML = `
-        <div class="stat-card"><div class="stat-label">Gesamt</div><div class="stat-value">${escapeHtml(fmt(total))}</div></div>
-        <div class="stat-card"><div class="stat-label">Offen</div><div class="stat-value">${escapeHtml(fmt(open))}</div></div>
+        <div class="stat-card accent"><div class="stat-label">Gesamt</div><div class="stat-value">${escapeHtml(fmt(total))}</div></div>
+        <div class="stat-card warning"><div class="stat-label">Offen</div><div class="stat-value">${escapeHtml(fmt(open))}</div></div>
         <div class="stat-card"><div class="stat-label">Geschlossen</div><div class="stat-value">${escapeHtml(fmt(closed))}</div></div>
       `;
       const dailyWrap = document.getElementById('ticket-daily-chart')?.parentElement;
@@ -172,15 +176,16 @@ window['page-analytics'] = {
     const self = this;
     body.innerHTML = `
       <div id="server-stats" class="stat-grid" style="margin:1rem 0"></div>
-      <div class="chart-card"><div class="card-title" style="margin-bottom:.75rem">Spieler Online (Verlauf)</div><div style="height:260px"><canvas id="server-chart"></canvas></div></div>
+      <div class="section-header" style="margin-top:1.5rem"><div class="section-title">Verlauf & Aufschlüsselung</div></div>
+      <div class="chart-card"><div class="card-header"><div class="card-title">Spieler Online (Verlauf)</div></div><div style="height:260px"><canvas id="server-chart"></canvas></div></div>
     `;
     self._periodBar('server', body);
     try {
       const { data } = await API.statusHistory(period);
       const { history, peak, uptimePct } = data;
       document.getElementById('server-stats').innerHTML = `
-        <div class="stat-card"><div class="stat-label">Peak Spieler</div><div class="stat-value">${escapeHtml(fmt(peak?.players_online ?? 0))}</div></div>
-        <div class="stat-card"><div class="stat-label">Uptime</div><div class="stat-value">${uptimePct != null ? escapeHtml(String(uptimePct)) + '%' : '—'}</div></div>
+        <div class="stat-card accent"><div class="stat-label">Peak Spieler</div><div class="stat-value">${escapeHtml(fmt(peak?.players_online ?? 0))}</div></div>
+        <div class="stat-card online"><div class="stat-label">Uptime</div><div class="stat-value">${uptimePct != null ? escapeHtml(String(uptimePct)) + '%' : '—'}</div></div>
         <div class="stat-card"><div class="stat-label">Checks</div><div class="stat-value">${escapeHtml(fmt(history.length))}</div></div>
       `;
       const wrap = document.getElementById('server-chart')?.parentElement;
@@ -198,9 +203,10 @@ window['page-analytics'] = {
     const self = this;
     body.innerHTML = `
       <div id="ai-stats" class="stat-grid" style="margin:1rem 0"></div>
+      <div class="section-header" style="margin-top:1.5rem"><div class="section-title">Verlauf & Aufschlüsselung</div></div>
       <div class="grid-2">
-        <div class="chart-card"><div class="card-title" style="margin-bottom:.75rem">AI Anfragen pro Tag</div><div style="height:220px"><canvas id="ai-daily-chart"></canvas></div></div>
-        <div class="chart-card"><div class="card-title" style="margin-bottom:.75rem">Nach Feature</div><div style="height:220px"><canvas id="ai-feature-chart"></canvas></div></div>
+        <div class="chart-card"><div class="card-header"><div class="card-title">AI Anfragen pro Tag</div></div><div style="height:220px"><canvas id="ai-daily-chart"></canvas></div></div>
+        <div class="chart-card"><div class="card-header"><div class="card-title">Nach Feature</div></div><div style="height:220px"><canvas id="ai-feature-chart"></canvas></div></div>
       </div>
     `;
     self._periodBar('ai', body);
@@ -208,7 +214,7 @@ window['page-analytics'] = {
       const { data } = await API.ai(period);
       const { byDay, byFeature, total } = data;
       document.getElementById('ai-stats').innerHTML = `
-        <div class="stat-card"><div class="stat-label">Gesamt</div><div class="stat-value">${escapeHtml(fmt(total))}</div><div class="stat-sub">Anfragen</div></div>
+        <div class="stat-card accent"><div class="stat-label">Gesamt</div><div class="stat-value">${escapeHtml(fmt(total))}</div><div class="stat-sub">Anfragen</div></div>
         <div class="stat-card"><div class="stat-label">Ø pro Tag</div><div class="stat-value">${byDay.length > 0 ? escapeHtml(fmt(Math.round(total / byDay.length))) : '—'}</div></div>
       `;
       const dailyWrap   = document.getElementById('ai-daily-chart')?.parentElement;

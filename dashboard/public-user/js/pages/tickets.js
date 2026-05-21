@@ -11,24 +11,16 @@ window['page-tickets'] = {
     const self = this;
     container.innerHTML = `
       <div class="page-header"><h1>Meine Tickets</h1><p>Alle Support-Tickets die du erstellt hast.</p></div>
-      <div class="toolbar" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center">
-        <select id="ticket-status-filter" class="select" style="width:auto">
+      <div class="filter-bar">
+        <select id="ticket-status-filter" class="filter-select">
           <option value="all">Alle</option>
           <option value="open">Offen</option>
           <option value="closed">Geschlossen</option>
         </select>
-        <input id="ticket-search" type="text" class="input" placeholder="Suche…" style="flex:1;min-width:160px;max-width:280px" value="">
+        <input id="ticket-search" type="text" class="form-input" placeholder="Suche…" style="flex:1;min-width:160px;max-width:280px" value="">
       </div>
       <div id="ticket-table-wrap"></div>
-      <div id="ticket-pagination" style="margin-top:.75rem;display:flex;gap:.5rem;flex-wrap:wrap"></div>
-
-      <!-- Modal -->
-      <div id="ticket-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2rem;max-width:640px;width:90%;max-height:80vh;overflow-y:auto;position:relative">
-          <button id="modal-close" style="position:absolute;top:.75rem;right:.75rem;background:none;border:none;color:var(--text-muted);font-size:1.25rem;cursor:pointer">✕</button>
-          <div id="modal-body"></div>
-        </div>
-      </div>
+      <div id="ticket-pagination" class="pagination"></div>
     `;
 
     document.getElementById('ticket-status-filter').value = self.status;
@@ -47,15 +39,6 @@ window['page-tickets'] = {
         self.page   = 1;
         self.load();
       }, 350);
-    });
-
-    document.getElementById('modal-close').addEventListener('click', () => {
-      document.getElementById('ticket-modal').style.display = 'none';
-    });
-    document.getElementById('ticket-modal').addEventListener('click', (e) => {
-      if (e.target === document.getElementById('ticket-modal')) {
-        document.getElementById('ticket-modal').style.display = 'none';
-      }
     });
 
     await self.load();
@@ -81,26 +64,28 @@ window['page-tickets'] = {
       }
 
       wrap.innerHTML = `
-        <table class="data-table">
-          <thead><tr>
-            <th>Kategorie</th>
-            <th>Status</th>
-            <th>Erstellt</th>
-            <th>Geschlossen</th>
-            <th>Zusammenfassung</th>
-          </tr></thead>
-          <tbody>
-            ${tickets.map(t => `
-              <tr class="clickable-row" data-id="${escapeHtml(String(t.id))}" style="cursor:pointer">
-                <td>${escapeHtml(t.category ?? '—')}</td>
-                <td><span class="status-badge ${t.status === 'open' ? 'online' : 'offline'}">${t.status === 'open' ? 'Offen' : 'Geschlossen'}</span></td>
-                <td>${fmtDate(t.created_at)}</td>
-                <td>${fmtDate(t.closed_at)}</td>
-                <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(t.summary ? t.summary.slice(0, 120) + (t.summary.length > 120 ? '…' : '') : '—')}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
+        <div class="table-card">
+          <table>
+            <thead><tr>
+              <th>Kategorie</th>
+              <th>Status</th>
+              <th>Erstellt</th>
+              <th>Geschlossen</th>
+              <th>Zusammenfassung</th>
+            </tr></thead>
+            <tbody>
+              ${tickets.map(t => `
+                <tr class="clickable-row" data-id="${escapeHtml(String(t.id))}" style="cursor:pointer">
+                  <td>${escapeHtml(t.category ?? '—')}</td>
+                  <td><span class="badge ${t.status === 'open' ? 'badge-warning' : 'badge-neutral'}">${t.status === 'open' ? 'Offen' : 'Geschlossen'}</span></td>
+                  <td>${fmtDate(t.created_at)}</td>
+                  <td>${fmtDate(t.closed_at)}</td>
+                  <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(t.summary ? t.summary.slice(0, 120) + (t.summary.length > 120 ? '…' : '') : '—')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
       `;
 
       wrap.querySelectorAll('.clickable-row').forEach(row => {
@@ -111,7 +96,7 @@ window['page-tickets'] = {
       pag.innerHTML = '';
       for (let p = 1; p <= pages; p++) {
         const btn = document.createElement('button');
-        btn.className = `period-btn${p === self.page ? ' active' : ''}`;
+        btn.className = `page-btn${p === self.page ? ' active' : ''}`;
         btn.textContent = String(p);
         btn.addEventListener('click', () => { self.page = p; self.load(); });
         pag.appendChild(btn);
@@ -122,22 +107,47 @@ window['page-tickets'] = {
   },
 
   async showDetail(id) {
-    const modal    = document.getElementById('ticket-modal');
+    const existing = document.getElementById('ticket-modal-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'ticket-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal">
+        <div class="modal-header">
+          <div class="modal-title">Ticket #${escapeHtml(String(id))}</div>
+          <button class="modal-close" id="modal-close-btn">✕</button>
+        </div>
+        <div id="modal-body"><div class="skeleton" style="height:120px"></div></div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    document.getElementById('modal-close-btn').addEventListener('click', () => overlay.remove());
+
+    // Find modal-body for content
     const modalBody = document.getElementById('modal-body');
-    modal.style.display = 'flex';
-    modalBody.innerHTML = '<div class="skeleton" style="height:120px"></div>';
 
     try {
       const { data: t } = await API.myTicket(id);
       modalBody.innerHTML = `
-        <h2 style="margin-top:0;margin-bottom:.5rem">${escapeHtml(t.category ?? 'Ticket')} #${escapeHtml(String(t.id))}</h2>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem 1.5rem;margin-bottom:1rem;font-size:.85rem;color:var(--text-muted)">
-          <div>Status: <strong style="color:var(--text)">${t.status === 'open' ? 'Offen' : 'Geschlossen'}</strong></div>
-          <div>Erstellt: <strong style="color:var(--text)">${fmtDate(t.created_at)}</strong></div>
-          ${t.closed_at ? `<div>Geschlossen: <strong style="color:var(--text)">${fmtDate(t.closed_at)}</strong></div>` : ''}
-          ${t.closed_by_username_snapshot ? `<div>Geschlossen von: <strong style="color:var(--text)">${escapeHtml(t.closed_by_username_snapshot)}</strong></div>` : ''}
+        <div class="modal-field">
+          <div class="modal-field-label">Kategorie</div>
+          <div class="modal-field-value">${escapeHtml(t.category ?? '—')}</div>
         </div>
-        ${t.summary ? `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;font-size:.9rem;line-height:1.6;white-space:pre-wrap">${escapeHtml(t.summary)}</div>` : emptyState('Keine Zusammenfassung vorhanden.')}
+        <div class="modal-field">
+          <div class="modal-field-label">Status</div>
+          <div class="modal-field-value"><span class="badge ${t.status === 'open' ? 'badge-warning' : 'badge-neutral'}">${t.status === 'open' ? 'Offen' : 'Geschlossen'}</span></div>
+        </div>
+        <div class="modal-field">
+          <div class="modal-field-label">Erstellt</div>
+          <div class="modal-field-value">${fmtDate(t.created_at)}</div>
+        </div>
+        ${t.closed_at ? `<div class="modal-field"><div class="modal-field-label">Geschlossen</div><div class="modal-field-value">${fmtDate(t.closed_at)}</div></div>` : ''}
+        ${t.closed_by_username_snapshot ? `<div class="modal-field"><div class="modal-field-label">Geschlossen von</div><div class="modal-field-value">${escapeHtml(t.closed_by_username_snapshot)}</div></div>` : ''}
+        ${t.summary ? `<div class="modal-field"><div class="modal-field-label">Zusammenfassung</div><div class="modal-field-value" style="white-space:pre-wrap;line-height:1.6">${escapeHtml(t.summary)}</div></div>` : ''}
       `;
     } catch (err) {
       modalBody.innerHTML = errorState(err.message);
