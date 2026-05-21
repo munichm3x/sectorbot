@@ -5,6 +5,7 @@ import { requirePermission, PermLevel } from '../../../auth/middleware';
 import { logger } from '../../../../utils/logger';
 import { insertAuditLog } from '../../../../analytics/analytics.db';
 import { env } from '../../../../config/env';
+import { runInitialImport } from '../../../../services/discordSync/import';
 
 // ENV variables to check for presence (NEVER return values)
 const ENV_KEYS_TO_CHECK = [
@@ -99,6 +100,24 @@ export function systemAdminRouter(client: Client): Router {
       success: false,
       error: 'Command resync must be done via CLI (npm run deploy) for safety.',
     });
+  });
+
+  // POST /api/system/sync-import — Owner only — seeds DB from existing Discord content
+  router.post('/sync-import', requirePermission(PermLevel.Owner), async (req, res) => {
+    try {
+      const user = req.session.user!;
+      const report = await runInitialImport(client, user.guildId, `dashboard:${user.userId}`);
+      insertAuditLog({
+        guildId: user.guildId, adminUserId: user.userId,
+        action: 'system.sync-import',
+        newValue: { rules: report.rules.imported, changelog: report.changelog.imported, events: report.events.imported },
+        success: report.errors.length === 0, ipAddress: req.ip,
+      });
+      res.json({ success: true, data: report });
+    } catch (err) {
+      logger.error('[admin/system] sync-import error:', err);
+      res.status(500).json({ success: false, error: 'Import fehlgeschlagen' });
+    }
   });
 
   return router;
