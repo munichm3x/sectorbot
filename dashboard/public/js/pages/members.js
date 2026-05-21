@@ -5,10 +5,10 @@ window['page-members'] = {
     const self = this;
     container.innerHTML = `
       <div class="page-header"><h1>Mitglieder</h1><p>Mitgliederliste — keine Aktivitätsranglisten, nur Verwaltungsdaten.</p></div>
-      <div style="margin-bottom:1rem">
+      <div class="filter-bar" style="margin-bottom:1rem">
         <input class="form-input" style="max-width:280px" placeholder="Nach Name suchen..." id="member-search">
       </div>
-      <div class="card" id="member-table-wrap"><div class="skeleton tall"></div></div>
+      <div class="table-card" id="member-table-wrap"><div class="skeleton tall"></div></div>
     `;
 
     let members = [];
@@ -38,7 +38,7 @@ window['page-members'] = {
     if (!wrap) return;
     if (filtered.length === 0) { wrap.innerHTML = emptyState('Keine Mitglieder gefunden.'); return; }
     wrap.innerHTML = `
-      <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.75rem">${filtered.length} Mitglieder</div>
+      <div class="page-info" style="padding:.75rem 1rem">${filtered.length} Mitglieder</div>
       <div class="table-wrap"><table>
         <thead><tr><th>Name</th><th>Discord-ID</th><th>Beigetreten</th><th>Rollen</th><th>Tickets</th></tr></thead>
         <tbody>${filtered.slice(0, 200).map(m => `
@@ -56,7 +56,7 @@ window['page-members'] = {
           </tr>
         `).join('')}</tbody>
       </table></div>
-      ${filtered.length > 200 ? `<p style="font-size:.78rem;color:var(--text-muted);margin-top:.5rem">Zeige 200 von ${filtered.length}. Suche verfeinern um mehr zu sehen.</p>` : ''}
+      ${filtered.length > 200 ? `<p class="page-info" style="padding:.5rem 1rem">Zeige 200 von ${filtered.length}. Suche verfeinern um mehr zu sehen.</p>` : ''}
     `;
   },
 };

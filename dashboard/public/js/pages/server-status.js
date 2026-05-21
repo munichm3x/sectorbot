@@ -14,10 +14,11 @@ window['page-server-status'] = {
       const { data: config } = await API.serverStatus();
       document.getElementById('ss-live').innerHTML = config ? `
         <div class="stat-grid">
-          <div class="stat-card"><div class="stat-label">Adresse</div><div class="stat-value mono" style="font-size:1rem">${escapeHtml(config.host ?? '—')}</div><div class="stat-sub">Port: ${config.query_port ?? '—'}</div></div>
-          <div class="stat-card"><div class="stat-label">Aktiv</div><div class="stat-value">${config.enabled ? '<span style="color:var(--online)">Ja</span>' : '<span style="color:var(--offline)">Nein</span>'}</div></div>
+          <div class="stat-card accent"><div class="stat-label">Adresse</div><div class="stat-value mono" style="font-size:1rem">${escapeHtml(config.host ?? '—')}</div><div class="stat-sub">Port: ${config.query_port ?? '—'}</div></div>
+          <div class="stat-card ${config.enabled ? 'online' : 'offline'}"><div class="stat-label">Aktiv</div><div class="stat-value">${config.enabled ? '<span style="color:var(--online)">Ja</span>' : '<span style="color:var(--offline)">Nein</span>'}</div></div>
           <div class="stat-card"><div class="stat-label">Intervall</div><div class="stat-value mono" style="font-size:1rem">${config.update_interval_secs}s</div></div>
         </div>
+        <div class="section-header" style="margin-top:1.5rem"><div class="section-title">Verbindungstest</div></div>
         <div style="margin-top:1rem">
           <button class="btn btn-primary" id="test-btn">▶ Status jetzt testen</button>
         </div>
@@ -31,10 +32,10 @@ window['page-server-status'] = {
         try {
           const { data } = await API.testStatus();
           if (data.online) {
-            resultEl.innerHTML = `<div class="card"><span class="badge badge-online">Online</span> &nbsp; Spieler: <strong>${escapeHtml(String(data.players))}/${escapeHtml(String(data.maxPlayers))}</strong> &nbsp; Ping: <strong>${escapeHtml(String(data.ping ?? '—'))}ms</strong></div>`;
+            resultEl.innerHTML = `<div class="table-card" style="padding:.75rem 1rem"><span class="badge badge-online">Online</span> &nbsp; Spieler: <strong>${escapeHtml(String(data.players))}/${escapeHtml(String(data.maxPlayers))}</strong> &nbsp; Ping: <strong>${escapeHtml(String(data.ping ?? '—'))}ms</strong></div>`;
             toast('Server online!', 'success');
           } else {
-            resultEl.innerHTML = `<div class="card"><span class="badge badge-offline">Offline</span></div>`;
+            resultEl.innerHTML = `<div class="table-card" style="padding:.75rem 1rem"><span class="badge badge-offline">Offline</span></div>`;
             toast('Server nicht erreichbar.', 'error');
           }
         } catch (err) {
