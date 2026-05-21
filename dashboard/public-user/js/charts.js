@@ -42,7 +42,7 @@ function fmtDuration(secs) {
 }
 
 /** Line chart: daily timeseries */
-function lineChart(id, labels, datasets, yLabel = '') {
+function lineChart(id, labels, datasets, yLabel = '', overrides = {}) {
   const el = getCanvas(id);
   if (!el) return null;
   return new Chart(el, {
@@ -60,6 +60,7 @@ function lineChart(id, labels, datasets, yLabel = '') {
           title: yLabel ? { display: true, text: yLabel, color: '#505060' } : { display: false },
         },
       },
+      ...overrides,
     },
   });
 }

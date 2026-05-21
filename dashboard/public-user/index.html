@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SECTOR 13 Community</title>
+  <title>SECTOR 13 Community Hub</title>
   <link rel="stylesheet" href="/public/css/dashboard.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -15,52 +15,49 @@
       <div class="logo-mark" style="font-size:0.75rem">S13</div>
       <div>
         <div class="logo-text">SECTOR 13</div>
-        <div class="logo-sub">Community</div>
+        <div class="logo-sub">Community Hub</div>
       </div>
     </div>
 
     <nav class="sidebar-nav" id="sidebar-nav">
-      <div class="nav-section">Übersicht</div>
-      <div class="nav-item" data-page="overview">
-        <span class="nav-icon">⬡</span> Overview
-      </div>
+      <div class="nav-section">Community Hub</div>
+      <div class="nav-item" data-page="overview"><span class="nav-icon">01</span> Übersicht</div>
+      <div class="nav-item" data-page="server"><span class="nav-icon">02</span> Server</div>
+      <div class="nav-item" data-page="community"><span class="nav-icon">03</span> Community</div>
+      <div class="nav-item" data-page="rules"><span class="nav-icon">04</span> Regeln</div>
+      <div class="nav-item" data-page="events"><span class="nav-icon">05</span> Events</div>
+      <div class="nav-item" data-page="changelog"><span class="nav-icon">06</span> Changelog</div>
 
-      <div class="nav-section">Server Analytics</div>
-      <div class="nav-item" data-page="analytics">
-        <span class="nav-icon">▲</span> Analytics
-      </div>
-
-      <div class="nav-section">Mein Bereich</div>
-      <div class="nav-item" data-page="tickets">
-        <span class="nav-icon">⬡</span> Meine Tickets
-      </div>
+      <div class="nav-section">Support</div>
+      <div class="nav-item" data-page="tickets"><span class="nav-icon">07</span> Support</div>
     </nav>
 
     <div class="sidebar-footer">
       <div class="bot-status">
-        <div class="status-dot" id="bot-status-dot"></div>
-        <span id="bot-status-text">Verbinde...</span>
+        <div class="status-dot online" id="bot-status-dot"></div>
+        <span id="bot-status-text">Public Hub</span>
       </div>
     </div>
   </aside>
 
   <main class="main">
     <header class="topbar">
-      <button class="topbar-toggle" id="sidebar-toggle" aria-label="Navigation öffnen">☰</button>
-      <div class="topbar-title" id="page-title">Overview</div>
+      <button class="topbar-toggle" id="sidebar-toggle" aria-label="Navigation öffnen">Menu</button>
+      <div class="topbar-title" id="page-title">Übersicht</div>
       <div class="topbar-right">
         <div class="topbar-user">
           <img class="topbar-avatar" id="user-avatar" src="" alt="" onerror="this.style.display='none'">
-          <span id="user-name">—</span>
+          <span id="user-name">Gast</span>
         </div>
-        <a href="/auth/public/logout" class="btn btn-ghost" style="font-size:0.75rem;padding:0.3rem 0.6rem;">Logout</a>
+        <a href="/auth/public/login" class="btn btn-primary" id="login-link" style="font-size:0.75rem;padding:0.3rem 0.6rem;">Login</a>
+        <a href="/auth/public/logout" class="btn btn-ghost hidden" id="logout-link" style="font-size:0.75rem;padding:0.3rem 0.6rem;">Logout</a>
       </div>
     </header>
 
     <div class="page-content" id="page-content">
       <div class="empty-state">
-        <div class="empty-icon">⬡</div>
-        <p>Lade Dashboard...</p>
+        <div class="empty-icon">S13</div>
+        <p>Lade Community Hub...</p>
       </div>
     </div>
   </main>

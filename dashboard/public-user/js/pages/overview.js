@@ -1,66 +1,86 @@
-// dashboard/public-user/js/pages/overview.js
 window['page-overview'] = {
   async render(container) {
-    container.innerHTML = `
-      <div class="page-header">
-        <h1>Community Übersicht</h1>
-        <p>SECTOR 13 Server- und Community-Status auf einen Blick.</p>
-      </div>
-      <div id="overview-content"><div class="skeleton tall"></div></div>
-    `;
+    container.innerHTML = pageHeader('SECTOR 13', 'Community Statuszentrale', 'Serverstatus, Aktivität, Hinweise und Updates für Spieler.') + '<div id="overview-content"></div>';
+    const root = document.getElementById('overview-content');
+
     try {
-      const { data } = await API.overview();
-      const { scumServer, guild, activity } = data;
+      const [{ data }, announcementsRes, eventsRes, changelogRes] = await Promise.all([
+        API.overview(),
+        API.announcements(),
+        API.events(),
+        API.changelog(),
+      ]);
 
-      const serverOnline = scumServer?.online;
+      const server = data.scumServer;
+      const guild = data.guild;
+      const activity = data.activity ?? {};
+      const community = data.community ?? {};
+      const announcements = announcementsRes.data.announcements ?? [];
+      const events = eventsRes.data.events ?? [];
+      const changelog = changelogRes.data.changelog ?? [];
 
-      document.getElementById('overview-content').innerHTML = `
+      root.innerHTML = `
+        <section class="server-hero card">
+          <div class="server-hero-main">
+            <div class="kicker">SCUM Server</div>
+            <h2>${guild ? escapeHtml(guild.name) : 'SECTOR 13'}</h2>
+            <div class="server-status-line">${statusBadge(server?.online)}<span>Letzter Check: ${fmtDate(server?.checkedAt)}</span></div>
+          </div>
+          <div class="server-hero-stats">
+            <div><span>Spieler</span><strong>${server ? `${fmt(server.playersOnline)}/${fmt(server.maxPlayers)}` : '-'}</strong></div>
+            <div><span>Ping</span><strong>${server?.ping != null ? `${server.ping} ms` : '-'}</strong></div>
+          </div>
+          <div class="cta-row">
+            <button class="btn btn-primary" onclick="navigateTo('server')">Serverstatus ansehen</button>
+            <button class="btn btn-ghost" onclick="navigateTo('rules')">Regeln lesen</button>
+          </div>
+        </section>
+
         <div class="stat-grid">
-          <div class="stat-card ${serverOnline ? 'online' : 'offline'}">
-            <div class="stat-label">SCUM Server</div>
-            <div class="stat-value ${serverOnline ? 'online' : 'offline'}">${serverOnline ? '● Online' : '○ Offline'}</div>
-            <div class="stat-sub">${serverOnline ? escapeHtml(String(scumServer.playersOnline)) + '/' + escapeHtml(String(scumServer.maxPlayers)) + ' Spieler' : 'Kein Status'}</div>
-          </div>
-          <div class="stat-card accent">
-            <div class="stat-label">Ping</div>
-            <div class="stat-value mono">${scumServer ? escapeHtml(String(scumServer.ping ?? '—')) : '—'}<small style="font-size:0.85rem;font-weight:400">ms</small></div>
-            <div class="stat-sub">Server Latenz</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Discord Mitglieder</div>
-            <div class="stat-value">${guild ? escapeHtml(fmt(guild.memberCount)) : '—'}</div>
-            <div class="stat-sub">${guild ? escapeHtml(guild.name) : ''}</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Nachrichten 24h</div>
-            <div class="stat-value">${escapeHtml(fmt(activity.messages))}</div>
-            <div class="stat-sub">Discord-Aktivität</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Voice 24h</div>
-            <div class="stat-value">${escapeHtml(fmt(Math.round((activity.voiceSecs ?? 0) / 60)))}</div>
-            <div class="stat-sub">Minuten kumuliert</div>
-          </div>
+          ${statCard('Discord Mitglieder', guild ? fmt(guild.memberCount) : '-', guild?.name ?? 'Community')}
+          ${statCard('Neue Mitglieder 7 Tage', fmt(community.newMembers7d ?? 0), 'Aggregiert')}
+          ${statCard('Neue Mitglieder 30 Tage', fmt(community.newMembers30d ?? 0), 'Aggregiert')}
+          ${statCard('Community Status', community.status ?? 'Ruhig', 'Aus aggregierter Aktivität', 'accent')}
         </div>
-        ${scumServer ? `
-          <div class="section-header" style="margin-top:1.5rem"><div class="section-title">Server Details</div></div>
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">SCUM Server Status</div>
-              <span class="badge ${serverOnline ? 'badge-online' : 'badge-offline'}">${serverOnline ? 'Online' : 'Offline'}</span>
-            </div>
-            ${serverOnline ? `
-              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
-                <div><div class="stat-label">Spieler</div><div style="font-size:1.4rem;font-weight:700;font-family:var(--mono)">${escapeHtml(String(scumServer.playersOnline))}/<span style="color:var(--text-muted);font-size:1rem">${escapeHtml(String(scumServer.maxPlayers))}</span></div></div>
-                <div><div class="stat-label">Ping</div><div style="font-size:1.4rem;font-weight:700;font-family:var(--mono)">${escapeHtml(String(scumServer.ping ?? '—'))}<small style="font-size:0.8rem;color:var(--text-muted)">ms</small></div></div>
-                <div><div class="stat-label">Letzter Check</div><div style="font-size:0.82rem;color:var(--text-secondary);margin-top:0.3rem">${fmtDate(scumServer.lastCheck)}</div></div>
-              </div>
-            ` : `<p style="color:var(--text-muted);font-size:0.85rem">Server ist offline oder nicht erreichbar.</p>`}
-          </div>
-        ` : ''}
+
+        <div class="section-header"><div class="section-title">Aktivität 24h</div></div>
+        <div class="stat-grid">
+          ${statCard('Nachrichten', fmt(activity.messages ?? 0), 'Heute insgesamt')}
+          ${statCard('Voice-Zeit', fmtDuration(activity.voiceSecs ?? 0), 'Heute aggregiert')}
+          ${statCard('Stream-Zeit', fmtDuration(activity.streamSecs ?? 0), 'Heute aggregiert')}
+          ${statCard('Aktive Text-Channels', fmt(activity.activeTextChannels ?? 0), 'Heute aggregiert')}
+        </div>
+
+        <div class="content-grid">
+          <section class="card">
+            <div class="card-header"><div class="card-title">Aktuelle Hinweise</div></div>
+            ${announcements.length ? announcements.map(renderAnnouncement).join('') : emptyState('Keine aktuellen Hinweise.', 'Wartung, Events oder wichtige Meldungen erscheinen hier.')}
+          </section>
+          <section class="card">
+            <div class="card-header"><div class="card-title">Nächste Events</div><button class="btn btn-ghost" onclick="navigateTo('events')">Alle Events</button></div>
+            ${events.length ? events.map(renderEvent).join('') : emptyState('Aktuell sind keine Events geplant.')}
+          </section>
+        </div>
+
+        <section class="card timeline-card">
+          <div class="card-header"><div class="card-title">Letzte Updates</div><button class="btn btn-ghost" onclick="navigateTo('changelog')">Changelog</button></div>
+          ${changelog.length ? changelog.slice(0, 5).map(renderChangelog).join('') : emptyState('Noch keine öffentlichen Updates veröffentlicht.', 'Sobald Changelogs persistent gespeichert werden, erscheinen sie hier.')}
+        </section>
       `;
-    } catch (err) {
-      document.getElementById('overview-content').innerHTML = errorState(err.message);
+    } catch {
+      root.innerHTML = errorState();
     }
   },
 };
+
+function renderAnnouncement(item) {
+  return `<div class="notice-card"><span class="badge badge-accent">${escapeHtml(item.type ?? 'Hinweis')}</span><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.message ?? '')}</p></div>`;
+}
+
+function renderEvent(item) {
+  return `<div class="event-card"><span class="badge badge-neutral">${escapeHtml(item.status ?? 'geplant')}</span><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.description ?? '')}</p></div>`;
+}
+
+function renderChangelog(item) {
+  return `<div class="timeline-item"><span class="badge badge-accent">${escapeHtml(item.category ?? 'Update')}</span><strong>${escapeHtml(item.title)}</strong><small>${fmtDate(item.publishedAt)}</small></div>`;
+}
