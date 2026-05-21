@@ -7,9 +7,10 @@ window['page-analytics-voice'] = {
       <div class="page-header"><h1>Voice & Stream Analytics</h1><p>Aggregierte Voice- und Stream-Zeit — keine personenbezogenen Daten.</p></div>
       <div id="vc-period"></div>
       <div id="vc-stats" class="stat-grid"></div>
-      <div class="grid-2" style="margin-top:1rem">
-        <div class="chart-card"><div class="card-title" style="margin-bottom:.75rem">Voice-Zeit pro Tag (Stunden)</div><div style="height:220px"><canvas id="vc-daily-chart"></canvas></div></div>
-        <div class="chart-card"><div class="card-title" style="margin-bottom:.75rem">Top Voice-Channels</div><div style="height:220px"><canvas id="vc-channel-chart"></canvas></div></div>
+      <div class="section-header" style="margin-top:1.5rem"><div class="section-title">Verlauf & Aufschlüsselung</div></div>
+      <div class="grid-2">
+        <div class="chart-card"><div class="card-header"><div class="card-title">Voice-Zeit pro Tag (Stunden)</div></div><div style="height:220px"><canvas id="vc-daily-chart"></canvas></div></div>
+        <div class="chart-card"><div class="card-header"><div class="card-title">Top Voice-Channels</div></div><div style="height:220px"><canvas id="vc-channel-chart"></canvas></div></div>
       </div>
     `;
     const pb = periodBar(self.period, (p) => { self.period = p; self.load(); });
@@ -23,7 +24,7 @@ window['page-analytics-voice'] = {
       const { byDay, byChannel, totalSeconds, totalStreamSeconds } = data;
 
       document.getElementById('vc-stats').innerHTML = `
-        <div class="stat-card"><div class="stat-label">Voice-Zeit</div><div class="stat-value">${Charts.fmtDuration(totalSeconds)}</div><div class="stat-sub">${this.period}</div></div>
+        <div class="stat-card accent"><div class="stat-label">Voice-Zeit</div><div class="stat-value">${Charts.fmtDuration(totalSeconds)}</div><div class="stat-sub">${this.period}</div></div>
         <div class="stat-card"><div class="stat-label">Stream-Zeit</div><div class="stat-value">${Charts.fmtDuration(totalStreamSeconds)}</div><div class="stat-sub">kumuliert</div></div>
         <div class="stat-card"><div class="stat-label">Sessions</div><div class="stat-value">${fmt(byDay.reduce((a,r)=>a+r.session_count,0))}</div><div class="stat-sub">Voice-Joins</div></div>
       `;

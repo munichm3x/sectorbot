@@ -7,12 +7,13 @@ window['page-analytics-ai'] = {
       <div class="page-header"><h1>AI Usage Analytics</h1><p>Aggregierte KI-Nutzung — keine Prompt-Inhalte gespeichert.</p></div>
       <div id="ai-period"></div>
       <div id="ai-stats" class="stat-grid"></div>
-      <div class="grid-2" style="margin-top:1rem">
-        <div class="chart-card"><div class="card-title" style="margin-bottom:.75rem">Requests pro Tag</div><div style="height:220px"><canvas id="ai-daily-chart"></canvas></div></div>
-        <div class="chart-card"><div class="card-title" style="margin-bottom:.75rem">Nach Feature</div><div style="height:220px"><canvas id="ai-feat-chart"></canvas></div></div>
+      <div class="section-header" style="margin-top:1.5rem"><div class="section-title">Verlauf & Aufschlüsselung</div></div>
+      <div class="grid-2">
+        <div class="chart-card"><div class="card-header"><div class="card-title">Requests pro Tag</div></div><div style="height:220px"><canvas id="ai-daily-chart"></canvas></div></div>
+        <div class="chart-card"><div class="card-header"><div class="card-title">Nach Feature</div></div><div style="height:220px"><canvas id="ai-feat-chart"></canvas></div></div>
       </div>
       <div class="card" style="margin-top:1rem">
-        <div class="card-title" style="margin-bottom:.75rem">Feature-Aufschlüsselung</div>
+        <div class="card-header"><div class="card-title">Feature-Aufschlüsselung</div></div>
         <div id="ai-table"></div>
       </div>
     `;
@@ -28,8 +29,8 @@ window['page-analytics-ai'] = {
       const successes = byFeature.reduce((a,r) => a + r.successes, 0);
 
       document.getElementById('ai-stats').innerHTML = `
-        <div class="stat-card"><div class="stat-label">Requests</div><div class="stat-value">${fmt(total)}</div><div class="stat-sub">${this.period}</div></div>
-        <div class="stat-card"><div class="stat-label">Erfolgsrate</div><div class="stat-value">${total > 0 ? Math.round(successes/total*100) : 0}%</div><div class="stat-sub">success</div></div>
+        <div class="stat-card accent"><div class="stat-label">Requests</div><div class="stat-value">${fmt(total)}</div><div class="stat-sub">${this.period}</div></div>
+        <div class="stat-card online"><div class="stat-label">Erfolgsrate</div><div class="stat-value">${total > 0 ? Math.round(successes/total*100) : 0}%</div><div class="stat-sub">success</div></div>
         <div class="stat-card"><div class="stat-label">Features</div><div class="stat-value">${byFeature.length}</div><div class="stat-sub">aktiv</div></div>
       `;
 
