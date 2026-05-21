@@ -1,7 +1,8 @@
 import { Router, type Request, type Response } from 'express';
 import type { Client } from 'discord.js';
 import { getLatestServerStatus, getServerStatusHistory, getPeakPlayers } from '../../../analytics/analytics.db';
-import { getDb } from '../../../db';
+import { getDb, getWipeInfo, getServerPublicInfo } from '../../../db';
+import { buildWipeInfoPayload, buildServerPublicInfoPayload } from './public-data';
 
 const PERIODS: Record<string, number> = { '24h': 86_400, '7d': 604_800, '30d': 2_592_000 };
 
@@ -28,6 +29,9 @@ export function publicServerRouter(_client: Client): Router {
       const peak24   = getPeakPlayers(guildId, since24h);
       const peak7    = getPeakPlayers(guildId, since7d);
 
+      const wipe = getWipeInfo(guildId);
+      const serverInfo = getServerPublicInfo(guildId);
+
       res.json({
         success: true,
         data: {
@@ -46,6 +50,8 @@ export function publicServerRouter(_client: Client): Router {
           } : null,
           uptime: { hours24: uptime24, days7: uptime7 },
           peak: { hours24: peak24, days7: peak7 },
+          wipe: buildWipeInfoPayload(wipe),
+          serverInfo: buildServerPublicInfoPayload(serverInfo),
         },
       });
     } catch {
