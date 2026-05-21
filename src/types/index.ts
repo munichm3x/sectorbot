@@ -24,6 +24,10 @@ export interface Ticket {
   closed_by?: string | null;
   message_count?: number | null;
   summary?: string | null;
+  archive_message_id?: string | null;
+  archive_channel_id?: string | null;
+  username_snapshot?: string | null;
+  closed_by_username_snapshot?: string | null;
 }
 
 export interface Panel {
