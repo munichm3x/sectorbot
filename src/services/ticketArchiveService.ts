@@ -2,8 +2,7 @@ import { EmbedBuilder } from 'discord.js';
 import type { Guild } from 'discord.js';
 import { SECTOR_COLORS } from '../ui/brand';
 import { getConfig } from './guildConfigService';
-import { getTicketCategoryConfigs } from '../db/index';
-import { enrichTicketClose } from '../db/index';
+import { getTicketCategoryConfigs, enrichTicketClose, setTicketArchiveInfo } from '../db/index';
 import { generateTicketSummary, type MessageEntry } from './ticketSummaryService';
 import { logger } from '../utils/logger';
 import type { Ticket } from '../types';
@@ -137,9 +136,39 @@ async function _archive(
     staffIds,
   });
 
+  // ── 8. Fetch username snapshots (best-effort) ──────────────────────────────
+  let usernameSnapshot:  string | null = null;
+  let closedBySnapshot:  string | null = null;
+  if (ticket) {
+    try {
+      const opener = await guild.members.fetch(ticket.opener_user_id).catch(() => null);
+      usernameSnapshot = opener?.user.username ?? null;
+    } catch { /* ignore */ }
+  }
   try {
-    await archiveRaw.send({ embeds: [embed] });
+    const closer = await guild.members.fetch(closedById).catch(() => null);
+    closedBySnapshot = closer?.user.username ?? null;
+  } catch { /* ignore */ }
+
+  // ── 9. Post archive card + save message reference ──────────────────────────
+  try {
+    const msg = await archiveRaw.send({ embeds: [embed] });
     logger.info(`[archiveTicket] Archive-Card gepostet für ${channelName} (#${ticket?.id ?? '?'})`);
+
+    // Save archive reference + username snapshots for dashboard lookup
+    if (ticket) {
+      try {
+        setTicketArchiveInfo(
+          ticket.channel_id,
+          msg.id,
+          archiveChannelId,
+          usernameSnapshot,
+          closedBySnapshot,
+        );
+      } catch (err) {
+        logger.error('[archiveTicket] setTicketArchiveInfo fehlgeschlagen:', err);
+      }
+    }
   } catch (err) {
     logger.error('[archiveTicket] Archive-Card konnte nicht gepostet werden:', err);
   }
