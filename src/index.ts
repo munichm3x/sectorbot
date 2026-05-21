@@ -43,6 +43,8 @@ import { oldmanChannelCommand } from './commands/oldman-channel';
 import { clearCommand } from './commands/clear';
 import { ticketArchivCommand } from './commands/ticket-archiv';
 import { syncImportCommand } from './commands/sync-import';
+import { announceCommand } from './commands/announce';
+import { wipeCommand } from './commands/wipe';
 
 // Ticket-Archiv Dashboard
 import { ticketArchivButtonHandler } from './interactions/buttons/ticketArchivHandler';
@@ -77,6 +79,7 @@ for (const cmd of [
   ticketCloseCommand, ticketAddCommand, ticketRemoveCommand,
   ticketRenameCommand, ticketClaimCommand, oldmanChannelCommand, clearCommand,
   streamerCommand, ticketArchivCommand, syncImportCommand,
+  announceCommand, wipeCommand,
 ]) {
   commands.set(cmd.data.name, cmd);
 }
