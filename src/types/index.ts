@@ -178,6 +178,8 @@ export interface PublicEvent {
   updated_by: string | null;
   created_at: number;
   updated_at: number;
+  // Migration column — added by ALTER TABLE
+  discord_event_id?: string | null;
 }
 
 export interface ChangelogEntry {
@@ -213,6 +215,8 @@ export interface PublicAnnouncement {
   updated_by: string | null;
   created_at: number;
   updated_at: number;
+  // Migration column — added by ALTER TABLE
+  discord_message_id?: string | null;
 }
 
 export interface FaqItem {

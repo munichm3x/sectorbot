@@ -74,6 +74,8 @@ export function initDb(path: string): void {
   db.exec(CREATE_BOT_SETTINGS_INDEX);
   db.exec(CREATE_WIPE_INFO_TABLE);
   db.exec(CREATE_SERVER_PUBLIC_INFO_TABLE);
+  try { db.exec(`ALTER TABLE public_events ADD COLUMN discord_event_id TEXT`); } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE public_announcements ADD COLUMN discord_message_id TEXT`); } catch { /* already exists */ }
   db.exec(`CREATE TABLE IF NOT EXISTS msg_dedup (id TEXT PRIMARY KEY, ts INTEGER NOT NULL)`);
   initAnalyticsDb();
   if (path !== ':memory:') logger.info(`Datenbank initialisiert: ${path}`);
