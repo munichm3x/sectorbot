@@ -983,6 +983,131 @@ body {
   border-bottom: none;
 }
 
+/* ── Activity Heatmap ──────────────────────────────────────────────────── */
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: 32px repeat(24, 1fr);
+  gap: 2px;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+.heatmap-corner { /* empty top-left */ }
+.heatmap-hour-label {
+  text-align: center;
+  padding-bottom: 0.2rem;
+  letter-spacing: -0.02em;
+}
+.heatmap-day-label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.4rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.heatmap-cell {
+  aspect-ratio: 1 / 1;
+  min-height: 12px;
+  border-radius: 2px;
+  transition: transform 0.12s ease;
+  cursor: pointer;
+}
+.heatmap-cell:hover {
+  transform: scale(1.25);
+  outline: 1px solid var(--accent);
+  z-index: 1;
+}
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+.heatmap-legend-cell {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+.heatmap-legend-label {
+  margin: 0 0.4rem;
+}
+@media (max-width: 700px) {
+  .heatmap-grid {
+    grid-template-columns: 28px repeat(24, 1fr);
+    font-size: 0.55rem;
+  }
+  .heatmap-cell { min-height: 10px; }
+}
+
+/* ── Radial Score / Gauge containers ─────────────────────────────────── */
+.score-ring-wrap {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  margin: 0 auto;
+}
+.score-ring-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+.score-ring-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  line-height: 1;
+  pointer-events: none;
+}
+.score-ring-value .score-number {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.score-ring-value .score-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+.gauge-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 220px;
+  aspect-ratio: 2 / 1.05;
+  margin: 0 auto;
+}
+.gauge-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+.gauge-value {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 0.15rem;
+  text-align: center;
+  font-family: var(--mono);
+  pointer-events: none;
+}
+.gauge-value .gauge-number {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.gauge-value .gauge-sub {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
 .login-prompt {
   display: flex;
   justify-content: space-between;
