@@ -314,6 +314,44 @@ export async function pushFaqToDiscord(client: Client, guildId: string): Promise
   }
 }
 
+// ===== CHANGELOG DELETE =====
+export async function deleteChangelogFromDiscord(client: Client, guildId: string, discordMessageId: string): Promise<SyncResult> {
+  try {
+    const config = getChangelogConfig(guildId);
+    if (!config?.public_channel_id) return { success: true };
+    const channel = await fetchTextChannel(client, config.public_channel_id);
+    if (!channel) return { success: true };
+    try {
+      const msg = await channel.messages.fetch(discordMessageId);
+      await msg.delete();
+      markOutbound(`message:${discordMessageId}`);
+    } catch { /* already gone */ }
+    return { success: true };
+  } catch (err) {
+    logger.error('[sync] deleteChangelogFromDiscord error:', err);
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+// ===== ANNOUNCEMENT DELETE =====
+export async function deleteAnnouncementFromDiscord(client: Client, guildId: string, discordMessageId: string): Promise<SyncResult> {
+  try {
+    const channelId = getSetting(guildId, 'channel', 'announcements_channel_id')?.setting_value;
+    if (!channelId) return { success: true };
+    const channel = await fetchTextChannel(client, channelId);
+    if (!channel) return { success: true };
+    try {
+      const msg = await channel.messages.fetch(discordMessageId);
+      await msg.delete();
+      markOutbound(`message:${discordMessageId}`);
+    } catch { /* already gone */ }
+    return { success: true };
+  } catch (err) {
+    logger.error('[sync] deleteAnnouncementFromDiscord error:', err);
+    return { success: false, error: (err as Error).message };
+  }
+}
+
 // ===== SERVER-INFO + WIPE =====
 export async function pushServerInfoToDiscord(client: Client, guildId: string): Promise<SyncResult> {
   try {
