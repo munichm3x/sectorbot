@@ -15,6 +15,9 @@ import { announcementsAdminRouter } from './admin/announcements.routes';
 import { faqAdminRouter } from './admin/faq.routes';
 import { wipeAdminRouter } from './admin/wipe.routes';
 import { serverInfoAdminRouter } from './admin/server-info.routes';
+import { botSettingsAdminRouter } from './admin/bot-settings.routes';
+import { publicPreviewAdminRouter } from './admin/public-preview.routes';
+import { systemAdminRouter } from './admin/system.routes';
 
 export function buildApiRouter(client: Client): Router {
   const router = Router();
@@ -38,6 +41,9 @@ export function buildApiRouter(client: Client): Router {
   router.use('/faq',            faqAdminRouter);
   router.use('/wipe',           wipeAdminRouter);
   router.use('/server-info',    serverInfoAdminRouter);
+  router.use('/bot-settings',   botSettingsAdminRouter);
+  router.use('/public-preview', publicPreviewAdminRouter(client));
+  router.use('/system',         systemAdminRouter(client));
 
   return router;
 }
