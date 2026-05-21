@@ -12,8 +12,8 @@ window['page-logs'] = {
         <button class="tab-btn" data-tab="audit">Audit-Trail</button>
       </div>
       <div id="log-tab-live">
-        <div style="display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap">
-          <select class="form-input" style="width:auto" id="log-level-filter">
+        <div class="filter-bar">
+          <select class="filter-select" id="log-level-filter">
             <option value="">Alle Level</option>
             <option value="info">Info</option>
             <option value="warn">Warn</option>
@@ -23,12 +23,12 @@ window['page-logs'] = {
             <input type="checkbox" id="log-live-toggle" checked> Live-Stream
           </label>
         </div>
-        <div class="card" style="font-family:var(--mono);font-size:.72rem;max-height:500px;overflow-y:auto" id="log-output">
-          <div class="skeleton"></div>
+        <div class="log-wrap" id="log-output">
+          <div class="skeleton" style="height:60px;margin:1rem"></div>
         </div>
       </div>
       <div id="log-tab-audit" style="display:none">
-        <div class="card" id="audit-output"><div class="skeleton tall"></div></div>
+        <div class="table-card" id="audit-output"><div class="skeleton tall"></div></div>
       </div>
     `;
 
@@ -72,12 +72,19 @@ window['page-logs'] = {
     if (this.eventSource) { this.eventSource.close(); this.eventSource = null; }
   },
 
-  renderLogs(entries) {
-    const out = document.getElementById('log-output');
-    if (!out) return;
-    out.innerHTML = entries.length === 0 ? emptyState('Keine Logs.') :
-      entries.map(e => this.logLine(e)).join('');
-    out.scrollTop = out.scrollHeight;
+  renderLogs(logs) {
+    const el = document.getElementById('log-output');
+    if (!el) return;
+    if (!logs || logs.length === 0) { el.innerHTML = emptyState('Keine Log-Einträge vorhanden.'); return; }
+    el.innerHTML = logs.map(l => `
+      <div class="log-entry">
+        <span class="log-ts">${escapeHtml(l.ts ?? l.timestamp ?? '—')}</span>
+        <span class="log-level ${escapeHtml((l.level ?? 'info').toLowerCase())}">${escapeHtml((l.level ?? 'INFO').toUpperCase())}</span>
+        <span class="log-src">${escapeHtml(l.source ?? '')}</span>
+        <span class="log-msg">${escapeHtml(l.message ?? '')}</span>
+      </div>
+    `).join('');
+    el.scrollTop = el.scrollHeight;
   },
 
   appendLogs(entries) {
@@ -85,19 +92,21 @@ window['page-logs'] = {
     const filter = document.getElementById('log-level-filter')?.value ?? '';
     if (!out) { this.stopStream(); return; }
     const filtered = filter ? entries.filter(e => e.level === filter) : entries;
-    filtered.forEach(e => {
+    filtered.forEach(l => {
       const div = document.createElement('div');
-      div.innerHTML = this.logLine(e);
+      div.innerHTML = `
+        <div class="log-entry">
+          <span class="log-ts">${escapeHtml(l.ts ?? l.timestamp ?? '—')}</span>
+          <span class="log-level ${escapeHtml((l.level ?? 'info').toLowerCase())}">${escapeHtml((l.level ?? 'INFO').toUpperCase())}</span>
+          <span class="log-src">${escapeHtml(l.source ?? '')}</span>
+          <span class="log-msg">${escapeHtml(l.message ?? '')}</span>
+        </div>
+      `;
       out.appendChild(div.firstChild);
     });
     // Keep max 500 lines in DOM
     while (out.children.length > 500) out.removeChild(out.firstChild);
     out.scrollTop = out.scrollHeight;
-  },
-
-  logLine(e) {
-    const colors = { info: 'var(--text-secondary)', warn: 'var(--warning)', error: 'var(--offline)', debug: 'var(--text-muted)' };
-    return `<div style="padding:.15rem 0;color:${colors[e.level]??'var(--text-secondary)'}"><span style="color:var(--text-muted)">${(e.ts ?? '').slice(11,19) || '--:--:--'}</span> <span style="font-weight:600">[${e.level.toUpperCase()}]</span> ${e.message.replace(/</g,'&lt;')}</div>`;
   },
 
   async loadAudit() {
