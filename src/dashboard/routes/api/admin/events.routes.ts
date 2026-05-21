@@ -1,6 +1,6 @@
 // src/dashboard/routes/api/admin/events.routes.ts
 import { Router } from 'express';
-import { requirePermission, PermLevel } from '../../../auth/middleware';
+import { requireContentEditor } from '../../../auth/middleware';
 import { logger } from '../../../../utils/logger';
 import { insertAuditLog } from '../../../../analytics/analytics.db';
 import {
@@ -8,7 +8,7 @@ import {
 } from '../../../../db/index';
 
 export const eventsAdminRouter = Router();
-eventsAdminRouter.use(requirePermission(PermLevel.Moderator));
+eventsAdminRouter.use(requireContentEditor);
 
 const VALID_EVENT_TYPES = ['pvp', 'raid', 'solo', 'airfield', 'bunker', 'trader', 'meeting', 'wipe', 'community'];
 const VALID_STATUSES = ['draft', 'scheduled', 'live', 'ended', 'cancelled'];

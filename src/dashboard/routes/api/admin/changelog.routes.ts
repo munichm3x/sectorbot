@@ -1,6 +1,6 @@
 // src/dashboard/routes/api/admin/changelog.routes.ts
 import { Router } from 'express';
-import { requirePermission, PermLevel } from '../../../auth/middleware';
+import { requireContentEditor } from '../../../auth/middleware';
 import { logger } from '../../../../utils/logger';
 import { insertAuditLog } from '../../../../analytics/analytics.db';
 import {
@@ -9,7 +9,7 @@ import {
 } from '../../../../db/index';
 
 export const changelogAdminRouter = Router();
-changelogAdminRouter.use(requirePermission(PermLevel.Moderator));
+changelogAdminRouter.use(requireContentEditor);
 
 const VALID_CATEGORIES = ['server', 'discord', 'rules', 'events', 'bot'];
 const VALID_STATUSES = ['draft', 'published', 'archived'];

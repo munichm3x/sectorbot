@@ -1,6 +1,6 @@
 // src/dashboard/routes/api/admin/announcements.routes.ts
 import { Router } from 'express';
-import { requirePermission, PermLevel } from '../../../auth/middleware';
+import { requireContentEditor } from '../../../auth/middleware';
 import { logger } from '../../../../utils/logger';
 import { insertAuditLog } from '../../../../analytics/analytics.db';
 import {
@@ -9,7 +9,7 @@ import {
 } from '../../../../db/index';
 
 export const announcementsAdminRouter = Router();
-announcementsAdminRouter.use(requirePermission(PermLevel.Moderator));
+announcementsAdminRouter.use(requireContentEditor);
 
 const VALID_TYPES = ['info', 'maintenance', 'warning', 'event', 'whitelist', 'rules'];
 

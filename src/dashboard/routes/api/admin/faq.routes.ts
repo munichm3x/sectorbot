@@ -1,6 +1,6 @@
 // src/dashboard/routes/api/admin/faq.routes.ts
 import { Router } from 'express';
-import { requirePermission, PermLevel } from '../../../auth/middleware';
+import { requireContentEditor } from '../../../auth/middleware';
 import { logger } from '../../../../utils/logger';
 import { insertAuditLog } from '../../../../analytics/analytics.db';
 import {
@@ -8,7 +8,7 @@ import {
 } from '../../../../db/index';
 
 export const faqAdminRouter = Router();
-faqAdminRouter.use(requirePermission(PermLevel.Moderator));
+faqAdminRouter.use(requireContentEditor);
 
 // GET /api/faq — list all (admin view, includes non-public)
 faqAdminRouter.get('/', (req, res) => {

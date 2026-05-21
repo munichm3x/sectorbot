@@ -1,6 +1,6 @@
 // src/dashboard/routes/api/admin/rules.routes.ts
 import { Router } from 'express';
-import { requirePermission, PermLevel } from '../../../auth/middleware';
+import { requireContentEditor } from '../../../auth/middleware';
 import { logger } from '../../../../utils/logger';
 import { insertAuditLog } from '../../../../analytics/analytics.db';
 import {
@@ -8,7 +8,7 @@ import {
 } from '../../../../db/index';
 
 export const rulesAdminRouter = Router();
-rulesAdminRouter.use(requirePermission(PermLevel.Moderator));
+rulesAdminRouter.use(requireContentEditor);
 
 const VALID_CATEGORIES = ['general', 'teams', 'solo', 'pvp', 'vehicles', 'bases', 'permadeath', 'whitelist', 'discord-support', 'events'];
 

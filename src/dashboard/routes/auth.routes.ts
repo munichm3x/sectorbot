@@ -10,7 +10,7 @@ import {
   buildOAuthURL, exchangeCode, fetchDiscordUser,
   fetchGuildMember, generateState,
 } from '../auth/discord-oauth';
-import { determinePermLevel } from '../auth/middleware';
+import { determinePermLevel, isContentEditorFromRoles, PermLevel } from '../auth/middleware';
 import { logger } from '../../utils/logger';
 import { env } from '../../config/env';
 
@@ -77,7 +77,10 @@ export function buildAuthRouter(client: Client): Router {
       const roles  = member?.roles ?? [];
 
       const permLevel = determinePermLevel(discordUser.id, roles);
-      if (permLevel === null) {
+      const isContentEditor = isContentEditorFromRoles(roles);
+      // Content editors can be granted dashboard access even without explicit perm-level
+      const effectivePerm = permLevel ?? (isContentEditor ? PermLevel.Viewer : null);
+      if (effectivePerm === null) {
         logger.info(`[dashboard] Zugriff verweigert für ${discordUser.username} (${discordUser.id})`);
         res.redirect('/auth/denied?reason=no_permission');
         return;
@@ -89,7 +92,8 @@ export function buildAuthRouter(client: Client): Router {
         userId:    discordUser.id,
         username:  discordUser.global_name ?? discordUser.username,
         avatar:    discordUser.avatar,
-        permLevel,
+        permLevel: effectivePerm,
+        isContentEditor,
         guildId:   guild.id,
       };
 
