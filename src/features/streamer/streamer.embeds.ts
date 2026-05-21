@@ -336,6 +336,26 @@ export function buildStreamerListComponents(
   ];
 }
 
+// ── Offline-Embed ──────────────────────────────────────────────────────────────
+
+export function buildOfflineEmbed(
+  state: Pick<StreamLiveState, 'last_live_title' | 'last_live_url'>,
+  platform: 'twitch' | 'youtube',
+  userName: string,
+): EmbedBuilder {
+  const platformLabel = platform === 'twitch' ? 'Twitch' : 'YouTube';
+  const embed = new EmbedBuilder()
+    .setColor(SECTOR_COLORS.OFFLINE_RED)
+    .setTitle(`⬛ ${userName} ist nicht mehr live auf ${platformLabel}`)
+    .setTimestamp();
+
+  const desc: string[] = ['Der Stream wurde beendet.'];
+  if (state.last_live_title) desc.push(`**Zuletzt gespielt:** ${state.last_live_title}`);
+  embed.setDescription(desc.join('\n'));
+
+  return embed;
+}
+
 // ── Announcement-Embed ─────────────────────────────────────────────────────────
 
 export function buildAnnouncementEmbed(

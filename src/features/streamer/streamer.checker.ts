@@ -8,7 +8,7 @@ import {
 } from './streamer.db';
 import { checkTwitchStream } from './streamer.twitch';
 import { checkYouTubeStream } from './streamer.youtube';
-import { buildAnnouncementEmbed, buildAnnouncementComponents } from './streamer.embeds';
+import { buildAnnouncementEmbed, buildAnnouncementComponents, buildOfflineEmbed } from './streamer.embeds';
 import type { StreamerConfig, Streamer, LiveResult } from './streamer.types';
 
 const MIN_INTERVAL_MS = 60_000;
@@ -114,11 +114,8 @@ async function handleLiveStateChange(
     // Noch live: Nachricht aktualisieren
     await updateAnnouncement(config, streamer, platform, result, state?.announcement_message_id ?? null);
   } else if (wasLive && !result.isLive) {
-    // Live → Offline
-    upsertLiveState(guild_id, discord_user_id, platform, {
-      is_live:                 0,
-      announcement_message_id: null,
-    });
+    // Live → Offline: Nachricht auf "beendet" aktualisieren, dann State leeren
+    await markOfflineAnnouncement(config, streamer, platform, state!);
   }
   // Offline → Offline: nichts tun
 }
@@ -181,6 +178,46 @@ async function updateAnnouncement(
     await msg.edit({ embeds: [embed], components });
   } catch (err) {
     logger.warn(`[streamer] Announcement-Update fehlgeschlagen: ${err}`);
+  }
+}
+
+async function markOfflineAnnouncement(
+  config:   StreamerConfig,
+  streamer: Streamer,
+  platform: 'twitch' | 'youtube',
+  state:    { announcement_message_id: string | null; last_live_title: string | null; last_live_url: string | null },
+): Promise<void> {
+  const { guild_id, discord_user_id } = streamer;
+
+  // Immer zuerst den DB-State auf offline setzen, message_id leeren
+  // → nächstes Live-Event sendet garantiert eine neue Nachricht
+  upsertLiveState(guild_id, discord_user_id, platform, {
+    is_live:                 0,
+    announcement_message_id: null,
+  });
+
+  // Bestehende Ankündigungs-Nachricht auf "beendet" editieren
+  if (!state.announcement_message_id || !config.live_channel_id) return;
+
+  try {
+    const rawChannel = await _client.channels.fetch(config.live_channel_id).catch(() => null);
+    if (!rawChannel?.isTextBased() || rawChannel.isDMBased()) return;
+
+    const msg = await rawChannel.messages.fetch(state.announcement_message_id).catch(() => null);
+    if (!msg) return;
+
+    const userName = platform === 'twitch'
+      ? (streamer.twitch_username ?? 'Unbekannt')
+      : `User ${discord_user_id}`;
+
+    const offlineEmbed = buildOfflineEmbed(state, platform, userName);
+
+    // "Zum Stream"-Button entfernen (stream ist beendet)
+    await msg.edit({ embeds: [offlineEmbed], components: [] });
+
+    logger.info(`[streamer] Offline-Embed gepostet für ${userName} (${platform})`);
+  } catch (err) {
+    logger.warn(`[streamer] Offline-Announcement-Edit fehlgeschlagen: ${err}`);
   }
 }
 

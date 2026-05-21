@@ -110,7 +110,11 @@ export async function checkTwitchStream(
     };
   } catch (err) {
     // Never log secrets
+    // Re-throw so the per-streamer error handler in runGuildCheck catches this.
+    // Returning { isLive: false } on network failures would cause the bot to
+    // treat every failed API call as "stream went offline" and post repeated
+    // offline embeds. State transitions must only happen on successful API responses.
     logger.warn(`[streamer] Twitch-Fehler für ${username}: ${err instanceof Error ? err.message : String(err)}`);
-    return { isLive: false };
+    throw err;
   }
 }
