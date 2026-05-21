@@ -8,6 +8,13 @@ import { settingsRouter } from './settings.routes';
 import { logsRouter } from './logs.routes';
 import { membersRouter } from './members.routes';
 import { serverStatusRouter } from './server-status.routes';
+import { rulesAdminRouter } from './admin/rules.routes';
+import { eventsAdminRouter } from './admin/events.routes';
+import { changelogAdminRouter } from './admin/changelog.routes';
+import { announcementsAdminRouter } from './admin/announcements.routes';
+import { faqAdminRouter } from './admin/faq.routes';
+import { wipeAdminRouter } from './admin/wipe.routes';
+import { serverInfoAdminRouter } from './admin/server-info.routes';
 
 export function buildApiRouter(client: Client): Router {
   const router = Router();
@@ -17,13 +24,20 @@ export function buildApiRouter(client: Client): Router {
     res.json({ success: true, data: { userId, username, avatar, permLevel } });
   });
 
-  router.use('/overview',      overviewRouter(client));
-  router.use('/analytics',     analyticsRouter);
-  router.use('/tickets',       ticketsRouter);
-  router.use('/settings',      settingsRouter);
-  router.use('/logs',          logsRouter);
-  router.use('/members',       membersRouter(client));
-  router.use('/server-status', serverStatusRouter(client));
+  router.use('/overview',       overviewRouter(client));
+  router.use('/analytics',      analyticsRouter);
+  router.use('/tickets',        ticketsRouter);
+  router.use('/settings',       settingsRouter);
+  router.use('/logs',           logsRouter);
+  router.use('/members',        membersRouter(client));
+  router.use('/server-status',  serverStatusRouter(client));
+  router.use('/rules',          rulesAdminRouter);
+  router.use('/events',         eventsAdminRouter);
+  router.use('/changelog',      changelogAdminRouter);
+  router.use('/announcements',  announcementsAdminRouter);
+  router.use('/faq',            faqAdminRouter);
+  router.use('/wipe',           wipeAdminRouter);
+  router.use('/server-info',    serverInfoAdminRouter);
 
   return router;
 }
