@@ -101,9 +101,68 @@ window['page-overview'] = {
             </div>
           </div>
         </div>
+
+        <!-- Public Hub Status -->
+        <div class="section-header" style="margin-top:2rem">
+          <div class="section-title">Public Hub Status</div>
+          <a href="#/public-preview" style="font-size:0.78rem;color:var(--accent)">Public Preview öffnen →</a>
+        </div>
+        <div id="ov-hub-status"><div class="skeleton" style="height:120px"></div></div>
+
+        <!-- Quick Actions -->
+        <div class="section-header" style="margin-top:1.5rem">
+          <div class="section-title">Quick Actions</div>
+        </div>
+        <div class="cta-bar" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;display:flex;gap:0.5rem;flex-wrap:wrap">
+          <a href="#/server-status" class="btn btn-ghost">● Status prüfen</a>
+          <a href="#/admin-events" class="btn btn-primary">+ Event erstellen</a>
+          <a href="#/admin-changelog" class="btn btn-primary">+ Changelog</a>
+          <a href="#/admin-announcements" class="btn btn-primary">+ Announcement</a>
+          <a href="#/admin-rules" class="btn btn-ghost">Regeln bearbeiten</a>
+          <a href="#/tickets" class="btn btn-ghost">Tickets</a>
+          <a href="/public" target="_blank" rel="noopener" class="btn btn-ghost">Public öffnen ↗</a>
+        </div>
       `;
+
+      // Load Public Hub status in background
+      this.loadHubStatus();
     } catch (err) {
       document.getElementById('ov-content').innerHTML = errorState(err.message);
+    }
+  },
+
+  async loadHubStatus() {
+    const el = document.getElementById('ov-hub-status');
+    if (!el) return;
+    try {
+      const { data } = await API.publicPreview();
+      const s = data.sections || {};
+      const items = [
+        { key: 'server', label: 'Server', warningKey: 'server' },
+        { key: 'rules', label: 'Regeln', warningKey: 'rules', count: s.rules?.publicCount },
+        { key: 'events', label: 'Events', warningKey: 'events', count: s.events?.publicCount },
+        { key: 'changelog', label: 'Changelog', warningKey: 'changelog', count: s.changelog?.publishedCount },
+        { key: 'announcements', label: 'Hinweise', warningKey: 'announcements', count: s.announcements?.activeCount },
+        { key: 'faq', label: 'FAQ', warningKey: 'faq', count: s.faq?.publicCount },
+      ];
+      el.innerHTML = `
+        <div class="stat-grid">
+          ${items.map(item => {
+            const section = s[item.warningKey] || {};
+            const ok = !section.warning;
+            const count = item.count ?? (section.statusOnline ? '●' : '—');
+            return `
+              <div class="stat-card ${ok ? 'online' : 'warning'}" style="padding:0.85rem 1rem">
+                <div class="stat-label">${escapeHtml(item.label)}</div>
+                <div class="stat-value" style="font-size:1.3rem">${escapeHtml(String(count))}</div>
+                <div class="stat-sub" style="font-size:0.7rem;${ok ? '' : 'color:var(--warning)'}">${ok ? 'OK' : 'leer / Hinweis'}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    } catch {
+      el.innerHTML = `<div style="font-size:0.78rem;color:var(--text-muted);padding:0.5rem 0">Public-Status konnte nicht geladen werden.</div>`;
     }
   },
 };
