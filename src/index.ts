@@ -11,6 +11,7 @@ import { setupOldManLore } from './features/oldManLore';
 import { setupChangelogDashboard } from './features/changelogDashboard';
 import { setupScumStatus } from './features/scumStatus/scumStatus.updater';
 import { setupTicketAutoClose } from './features/ticketAutoClose';
+import { registerEventSyncListeners } from './features/discordSync/eventListeners';
 import { changelogButtonHandler } from './interactions/buttons/changelogButtonHandler';
 import { scumStatusSetupHandler } from './interactions/buttons/setup/scumStatusSetupHandler';
 import { changelogModalHandler } from './interactions/modals/changelogModalHandler';
@@ -171,6 +172,7 @@ setupChangelogDashboard(client);
 setupScumStatus(client);
 setupStreamerChecker(client);
 setupTicketAutoClose(client);
+registerEventSyncListeners(client);
 
 if (env.ANALYTICS_ENABLED) {
   setupAnalyticsTracking(client);
