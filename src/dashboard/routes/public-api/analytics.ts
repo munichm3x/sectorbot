@@ -7,8 +7,9 @@ import type { Client } from 'discord.js';
 import {
   getMessagesByDay, getMessagesByChannel, getMessagesTotal,
   getVoiceByDay, getVoiceByChannel, getVoiceTotal, getStreamTotal,
-  getMemberEventsByDay,
+  getMemberEventsByDay, getMemberJoinsTotal,
   getServerStatusHistory, getPeakPlayers,
+  getMessageHeatmap, getVoiceHeatmap,
 } from '../../../analytics/analytics.db';
 import { getDb } from '../../../db/index';
 
@@ -86,6 +87,70 @@ publicAnalyticsRouter.get('/server-status', (req, res) => {
     const onlineCnt = history.filter(r => r.online === 1).length;
     const uptimePct = total > 0 ? Math.round((onlineCnt / total) * 100) : null;
     res.json({ success: true, data: { history, peak, uptimePct, since } });
+  } catch { res.status(500).json({ success: false, error: 'Internal error' }); }
+});
+
+// GET /public-api/analytics/heatmap?period=7d — anonymized weekday×hour activity grid
+publicAnalyticsRouter.get('/heatmap', (req, res) => {
+  try {
+    const guildId = resolveGuildId(req, client);
+    if (!guildId) { res.json({ success: true, data: { messages: [], voice: [] } }); return; }
+    const since = parsePeriod(req.query.period as string);
+    res.json({
+      success: true,
+      data: {
+        messages: getMessageHeatmap(guildId, since),
+        voice: getVoiceHeatmap(guildId, since),
+      },
+    });
+  } catch { res.status(500).json({ success: false, error: 'Internal error' }); }
+});
+
+// GET /public-api/analytics/engagement?period=7d
+publicAnalyticsRouter.get('/engagement', (req, res) => {
+  try {
+    const guildId = resolveGuildId(req, client);
+    if (!guildId) { res.json({ success: true, data: { score: 0, breakdown: {}, period: req.query.period ?? '7d' } }); return; }
+    const since     = parsePeriod(req.query.period as string);
+    const nowSec    = Math.floor(Date.now() / 1000);
+    const periodSec = nowSec - since;
+    const prevSince = since - periodSec;
+
+    const messages  = getMessagesTotal(guildId, since);
+    const voiceSecs = getVoiceTotal(guildId, since);
+    const joins     = getMemberJoinsTotal(guildId, since);
+
+    const prevMessages  = getMessagesTotal(guildId, prevSince) - messages;
+    const prevVoiceSecs = getVoiceTotal(guildId, prevSince) - voiceSecs;
+    const prevJoins     = getMemberJoinsTotal(guildId, prevSince) - joins;
+
+    function score(v: number, scale: number): number {
+      if (v <= 0) return 0;
+      return Math.min(25, Math.round((Math.log10(v + 1) / Math.log10(scale + 1)) * 25));
+    }
+    const msgScore   = score(messages, 5000);
+    const voiceScore = score(voiceSecs / 60, 6000);
+    const joinScore  = score(joins, 50);
+    const total      = Math.round(((msgScore + voiceScore + joinScore) / 75) * 100);
+
+    function delta(curr: number, prev: number): { abs: number; pct: number | null } {
+      const abs = curr - prev;
+      const pct = prev > 0 ? Math.round((abs / prev) * 100) : null;
+      return { abs, pct };
+    }
+
+    res.json({
+      success: true,
+      data: {
+        score: total,
+        breakdown: {
+          messages: { value: messages, delta: delta(messages, prevMessages) },
+          voice:    { value: voiceSecs, delta: delta(voiceSecs, prevVoiceSecs) },
+          joins:    { value: joins, delta: delta(joins, prevJoins) },
+        },
+        period: req.query.period ?? '7d',
+      },
+    });
   } catch { res.status(500).json({ success: false, error: 'Internal error' }); }
 });
 

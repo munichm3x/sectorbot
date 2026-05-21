@@ -3,12 +3,14 @@ import { Router } from 'express';
 import {
   getMessagesByDay, getMessagesByChannel, getMessagesTotal,
   getVoiceByDay, getVoiceByChannel, getVoiceTotal, getStreamTotal,
-  getMemberEventsByDay,
+  getMemberEventsByDay, getMemberJoinsTotal,
   getAiByDay, getAiByFeature, getAiTotal,
   getCommandUsage, getInteractionsTotal,
   getServerStatusHistory, getPeakPlayers,
+  getMessageHeatmap, getVoiceHeatmap, getActivityByHour, getInteractionStats,
 } from '../../../analytics/analytics.db';
 import { getDb } from '../../../db/index';
+import { logger } from '../../../utils/logger';
 
 function parsePeriod(period?: string): number {
   const now = Math.floor(Date.now() / 1000);
@@ -92,3 +94,216 @@ analyticsRouter.get('/tickets', (req, res) => {
     res.json({ success: true, data: { total, open, closed, byCategory, byDay, avgResolutionSecs: avgRow.avg_secs, since } });
   } catch { res.status(500).json({ success: false, error: 'Internal error' }); }
 });
+
+// ─── Elite Analytics Endpoints ────────────────────────────────────────────────
+
+// GET /api/analytics/heatmap?period=7d
+analyticsRouter.get('/heatmap', (req, res) => {
+  try {
+    const guildId = req.session.user!.guildId;
+    const since   = parsePeriod(req.query.period as string);
+    res.json({
+      success: true,
+      data: {
+        messages: getMessageHeatmap(guildId, since),
+        voice: getVoiceHeatmap(guildId, since),
+      },
+    });
+  } catch (err) {
+    logger.error('[analytics] heatmap error:', err);
+    res.status(500).json({ success: false, error: 'Internal error' });
+  }
+});
+
+// GET /api/analytics/hourly?period=24h|7d
+analyticsRouter.get('/hourly', (req, res) => {
+  try {
+    const guildId = req.session.user!.guildId;
+    const since   = parsePeriod(req.query.period as string);
+    res.json({ success: true, data: getActivityByHour(guildId, since) });
+  } catch (err) {
+    logger.error('[analytics] hourly error:', err);
+    res.status(500).json({ success: false, error: 'Internal error' });
+  }
+});
+
+// GET /api/analytics/engagement?period=7d
+analyticsRouter.get('/engagement', (req, res) => {
+  try {
+    const guildId   = req.session.user!.guildId;
+    const since     = parsePeriod(req.query.period as string);
+    const nowSec    = Math.floor(Date.now() / 1000);
+    const periodSec = nowSec - since;
+    const prevSince = since - periodSec;
+
+    const messages     = getMessagesTotal(guildId, since);
+    const voiceSecs    = getVoiceTotal(guildId, since);
+    const joins        = getMemberJoinsTotal(guildId, since);
+    const interactions = getInteractionsTotal(guildId, since);
+
+    const prevMessages  = getMessagesTotal(guildId, prevSince) - messages;
+    const prevVoiceSecs = getVoiceTotal(guildId, prevSince) - voiceSecs;
+    const prevJoins     = getMemberJoinsTotal(guildId, prevSince) - joins;
+
+    function score(value: number, scale: number): number {
+      if (value <= 0) return 0;
+      return Math.min(25, Math.round((Math.log10(value + 1) / Math.log10(scale + 1)) * 25));
+    }
+    const msgScore   = score(messages, 5000);
+    const voiceScore = score(voiceSecs / 60, 6000);
+    const joinScore  = score(joins, 50);
+    const cmdScore   = score(interactions, 1000);
+    const total      = msgScore + voiceScore + joinScore + cmdScore;
+
+    function delta(curr: number, prev: number): { abs: number; pct: number | null } {
+      const abs = curr - prev;
+      const pct = prev > 0 ? Math.round((abs / prev) * 100) : null;
+      return { abs, pct };
+    }
+
+    res.json({
+      success: true,
+      data: {
+        score: total,
+        breakdown: {
+          messages: { value: messages, score: msgScore, max: 25, delta: delta(messages, prevMessages) },
+          voice:    { value: voiceSecs, score: voiceScore, max: 25, delta: delta(voiceSecs, prevVoiceSecs) },
+          joins:    { value: joins, score: joinScore, max: 25, delta: delta(joins, prevJoins) },
+          commands: { value: interactions, score: cmdScore, max: 25, delta: delta(interactions, 0) },
+        },
+        period: req.query.period ?? '7d',
+      },
+    });
+  } catch (err) {
+    logger.error('[analytics] engagement error:', err);
+    res.status(500).json({ success: false, error: 'Internal error' });
+  }
+});
+
+// GET /api/analytics/bot-health?period=7d
+analyticsRouter.get('/bot-health', (req, res) => {
+  try {
+    const guildId = req.session.user!.guildId;
+    const since   = parsePeriod(req.query.period as string);
+    const stats   = getInteractionStats(guildId, since);
+    const aiStats = {
+      total: getAiTotal(guildId, since),
+      byFeature: getAiByFeature(guildId, since),
+      byDay: getAiByDay(guildId, since),
+    };
+    const cmds = getCommandUsage(guildId, since).slice(0, 10);
+    res.json({
+      success: true,
+      data: {
+        interactions: stats,
+        ai: aiStats,
+        topCommands: cmds,
+        botUptimeSec: Math.round(process.uptime()),
+      },
+    });
+  } catch (err) {
+    logger.error('[analytics] bot-health error:', err);
+    res.status(500).json({ success: false, error: 'Internal error' });
+  }
+});
+
+// GET /api/analytics/export?dataset=<name>&format=csv|json&period=7d
+analyticsRouter.get('/export', (req, res) => {
+  try {
+    const guildId = req.session.user!.guildId;
+    const dataset = String(req.query.dataset ?? '');
+    const format  = String(req.query.format ?? 'csv').toLowerCase();
+    const since   = parsePeriod(req.query.period as string);
+
+    let rows: Array<Record<string, unknown>> = [];
+    let columns: string[] = [];
+
+    switch (dataset) {
+      case 'messages-by-day':
+        columns = ['date_ts', 'date_iso', 'count'];
+        rows = getMessagesByDay(guildId, since).map(r => ({
+          date_ts: r.date_ts,
+          date_iso: new Date(r.date_ts * 1000).toISOString().slice(0, 10),
+          count: r.count,
+        }));
+        break;
+      case 'voice-by-day':
+        columns = ['date_ts', 'date_iso', 'total_seconds', 'session_count'];
+        rows = getVoiceByDay(guildId, since).map(r => ({
+          date_ts: r.date_ts,
+          date_iso: new Date(r.date_ts * 1000).toISOString().slice(0, 10),
+          total_seconds: r.total_seconds,
+          session_count: r.session_count,
+        }));
+        break;
+      case 'members-by-day':
+        columns = ['date_ts', 'date_iso', 'joins', 'leaves', 'net'];
+        rows = getMemberEventsByDay(guildId, since).map(r => ({
+          date_ts: r.date_ts,
+          date_iso: new Date(r.date_ts * 1000).toISOString().slice(0, 10),
+          joins: r.joins,
+          leaves: r.leaves,
+          net: r.joins - r.leaves,
+        }));
+        break;
+      case 'channels-text':
+        columns = ['channel_id', 'count'];
+        rows = getMessagesByChannel(guildId, since) as Array<Record<string, unknown>>;
+        break;
+      case 'channels-voice':
+        columns = ['channel_id', 'total_seconds', 'session_count'];
+        rows = getVoiceByChannel(guildId, since) as Array<Record<string, unknown>>;
+        break;
+      case 'server-status':
+        columns = ['checked_at', 'iso', 'online', 'players_online', 'max_players', 'ping'];
+        rows = getServerStatusHistory(guildId, since, 5000).map(r => ({
+          checked_at: r.checked_at,
+          iso: new Date(r.checked_at * 1000).toISOString(),
+          online: r.online,
+          players_online: r.players_online,
+          max_players: r.max_players,
+          ping: r.ping,
+        }));
+        break;
+      case 'ai-by-feature':
+        columns = ['feature', 'total', 'successes', 'errors', 'avg_duration_ms'];
+        rows = getAiByFeature(guildId, since) as Array<Record<string, unknown>>;
+        break;
+      case 'command-usage':
+        columns = ['command_name', 'total', 'successes', 'errors', 'avg_duration_ms'];
+        rows = getCommandUsage(guildId, since) as Array<Record<string, unknown>>;
+        break;
+      default:
+        res.status(400).json({ success: false, error: 'Unknown dataset' });
+        return;
+    }
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+
+    if (format === 'json') {
+      res.setHeader('Content-Disposition', `attachment; filename="sectorbot-${dataset}-${dateStr}.json"`);
+      res.setHeader('Content-Type', 'application/json');
+      res.send(JSON.stringify(rows, null, 2));
+      return;
+    }
+
+    // CSV
+    const csv = [columns.join(',')];
+    for (const r of rows) {
+      csv.push(columns.map(c => escapeCsv(r[c])).join(','));
+    }
+    res.setHeader('Content-Disposition', `attachment; filename="sectorbot-${dataset}-${dateStr}.csv"`);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.send(csv.join('\n'));
+  } catch (err) {
+    logger.error('[analytics] export error:', err);
+    res.status(500).json({ success: false, error: 'Internal error' });
+  }
+});
+
+function escapeCsv(v: unknown): string {
+  if (v == null) return '';
+  const s = String(v);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}

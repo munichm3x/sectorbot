@@ -466,6 +466,116 @@ export function purgeOldRawEvents(retentionDays: number): void {
   db.prepare(`DELETE FROM member_events WHERE created_at < ?`).run(memberCutoff);
 }
 
+// ─── Elite Analytics: New Aggregation Functions ──────────────────────────────
+
+/**
+ * Activity heatmap: aggregated message counts by (weekday, hour-of-day).
+ * Returns array of { weekday: 0-6, hour: 0-23, count: number }
+ * weekday 0 = Monday (ISO), 6 = Sunday
+ */
+export function getMessageHeatmap(guildId: string, sinceTs: number): Array<{ weekday: number; hour: number; count: number }> {
+  const rows = getDb().prepare(`
+    SELECT
+      CAST(strftime('%w', bucket_start, 'unixepoch') AS INTEGER) AS dow_sun_first,
+      CAST(strftime('%H', bucket_start, 'unixepoch') AS INTEGER) AS hour,
+      SUM(message_count) AS count
+    FROM discord_message_activity
+    WHERE guild_id = ? AND bucket_start >= ?
+    GROUP BY dow_sun_first, hour
+  `).all(guildId, sinceTs) as Array<{ dow_sun_first: number; hour: number; count: number }>;
+
+  return rows.map(r => ({
+    weekday: r.dow_sun_first === 0 ? 6 : r.dow_sun_first - 1,
+    hour: r.hour,
+    count: r.count,
+  }));
+}
+
+/**
+ * Voice activity heatmap — same structure as message heatmap.
+ * Uses total_seconds (total voice time in seconds for that hour×weekday slot).
+ */
+export function getVoiceHeatmap(guildId: string, sinceTs: number): Array<{ weekday: number; hour: number; seconds: number }> {
+  const rows = getDb().prepare(`
+    SELECT
+      CAST(strftime('%w', bucket_start, 'unixepoch') AS INTEGER) AS dow_sun_first,
+      CAST(strftime('%H', bucket_start, 'unixepoch') AS INTEGER) AS hour,
+      SUM(total_seconds) AS seconds
+    FROM discord_voice_activity
+    WHERE guild_id = ? AND bucket_start >= ?
+    GROUP BY dow_sun_first, hour
+  `).all(guildId, sinceTs) as Array<{ dow_sun_first: number; hour: number; seconds: number }>;
+
+  return rows.map(r => ({
+    weekday: r.dow_sun_first === 0 ? 6 : r.dow_sun_first - 1,
+    hour: r.hour,
+    seconds: r.seconds,
+  }));
+}
+
+/**
+ * Hourly breakdown combining message and voice data.
+ * Returns array of { hour_ts, message_count, voice_seconds, stream_seconds }
+ */
+export function getActivityByHour(guildId: string, sinceTs: number): Array<{
+  hour_ts: number; message_count: number; voice_seconds: number; stream_seconds: number;
+}> {
+  const rows = getDb().prepare(`
+    WITH hours AS (
+      SELECT DISTINCT (bucket_start / 3600) * 3600 AS hour_ts
+      FROM discord_message_activity
+      WHERE guild_id = ? AND bucket_start >= ?
+      UNION
+      SELECT DISTINCT (bucket_start / 3600) * 3600 AS hour_ts
+      FROM discord_voice_activity
+      WHERE guild_id = ? AND bucket_start >= ?
+    )
+    SELECT
+      h.hour_ts,
+      COALESCE((
+        SELECT SUM(message_count)
+        FROM discord_message_activity
+        WHERE guild_id = ? AND (bucket_start / 3600) * 3600 = h.hour_ts
+      ), 0) AS message_count,
+      COALESCE((
+        SELECT SUM(total_seconds)
+        FROM discord_voice_activity
+        WHERE guild_id = ? AND (bucket_start / 3600) * 3600 = h.hour_ts
+      ), 0) AS voice_seconds,
+      COALESCE((
+        SELECT SUM(total_stream_seconds)
+        FROM discord_voice_activity
+        WHERE guild_id = ? AND (bucket_start / 3600) * 3600 = h.hour_ts
+      ), 0) AS stream_seconds
+    FROM hours h
+    ORDER BY h.hour_ts ASC
+  `).all(guildId, sinceTs, guildId, sinceTs, guildId, guildId, guildId) as Array<{ hour_ts: number; message_count: number; voice_seconds: number; stream_seconds: number }>;
+  return rows;
+}
+
+/**
+ * Bot interaction events summary (commands, errors, total).
+ */
+export function getInteractionStats(guildId: string, sinceTs: number): {
+  total: number;
+  successes: number;
+  errors: number;
+  uniqueCommands: number;
+  avgDurationMs: number | null;
+} {
+  const row = getDb().prepare(`
+    SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) AS successes,
+      SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) AS errors,
+      COUNT(DISTINCT command_name) AS uniqueCommands,
+      AVG(duration_ms) AS avgDurationMs
+    FROM bot_interaction_events
+    WHERE guild_id = ? AND created_at >= ?
+  `).get(guildId, sinceTs) as { total: number; successes: number; errors: number; uniqueCommands: number; avgDurationMs: number | null } | undefined;
+  return row ?? { total: 0, successes: 0, errors: 0, uniqueCommands: 0, avgDurationMs: null };
+}
+
 /** Delete server_status_history rows older than retentionDays. */
 export function purgeOldStatusHistory(retentionDays: number): void {
   const cutoff = nowSecs() - retentionDays * 86400;
