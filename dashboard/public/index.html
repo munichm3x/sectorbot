@@ -9,11 +9,12 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
 <div id="app">
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <div class="logo-mark">S</div>
+      <div class="logo-mark" style="font-size:0.75rem">S13</div>
       <div>
         <div class="logo-text">SECTOR 13</div>
         <div class="logo-sub">Control Panel</div>
@@ -31,13 +32,13 @@
         <span class="nav-icon">✉</span> Nachrichten
       </div>
       <div class="nav-item" data-page="analytics-voice">
-        <span class="nav-icon">🎙</span> Voice & Stream
+        <span class="nav-icon">◉</span> Voice & Stream
       </div>
       <div class="nav-item" data-page="analytics-tickets">
-        <span class="nav-icon">🎫</span> Tickets
+        <span class="nav-icon">⬡</span> Tickets
       </div>
       <div class="nav-item" data-page="analytics-growth">
-        <span class="nav-icon">📈</span> Wachstum
+        <span class="nav-icon">▲</span> Wachstum
       </div>
       <div class="nav-item" data-page="analytics-ai">
         <span class="nav-icon">◈</span> AI Usage
@@ -48,10 +49,10 @@
 
       <div class="nav-section">Management</div>
       <div class="nav-item" data-page="tickets">
-        <span class="nav-icon">📋</span> Tickets
+        <span class="nav-icon">≡</span> Tickets
       </div>
       <div class="nav-item" data-page="members">
-        <span class="nav-icon">👥</span> Mitglieder
+        <span class="nav-icon">◎</span> Mitglieder
       </div>
       <div class="nav-item" data-page="server-status">
         <span class="nav-icon">⚡</span> Server Status
@@ -59,10 +60,10 @@
 
       <div class="nav-section">System</div>
       <div class="nav-item" data-page="logs">
-        <span class="nav-icon">📄</span> Logs
+        <span class="nav-icon">≡</span> Logs
       </div>
       <div class="nav-item" data-page="ai">
-        <span class="nav-icon">🤖</span> AI
+        <span class="nav-icon">◈</span> AI
       </div>
       <div class="nav-item" data-page="settings">
         <span class="nav-icon">⚙</span> Einstellungen
@@ -80,6 +81,7 @@
   <!-- Main area -->
   <main class="main">
     <header class="topbar">
+      <button class="topbar-toggle" id="sidebar-toggle" aria-label="Navigation öffnen">☰</button>
       <div class="topbar-title" id="page-title">Overview</div>
       <div class="topbar-right">
         <div class="topbar-user">
