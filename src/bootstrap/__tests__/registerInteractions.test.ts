@@ -25,22 +25,22 @@ function makeCtx(): BootstrapContext {
 }
 
 describe('registerInteractions', () => {
-  it('registers 12 button handlers (11 + str)', () => {
+  it('registers 14 button handlers (13 + str)', () => {
     const ctx = makeCtx();
     registerInteractions(ctx);
-    expect(ctx.buttonHandlers.size).toBe(12);
+    expect(ctx.buttonHandlers.size).toBe(14);
   });
 
-  it('registers 3 select menu handlers (2 + str)', () => {
+  it('registers 4 select menu handlers (3 + str)', () => {
     const ctx = makeCtx();
     registerInteractions(ctx);
-    expect(ctx.selectMenuHandlers.size).toBe(3);
+    expect(ctx.selectMenuHandlers.size).toBe(4);
   });
 
-  it('registers 7 modal handlers (6 + str)', () => {
+  it('registers 9 modal handlers (8 + str)', () => {
     const ctx = makeCtx();
     registerInteractions(ctx);
-    expect(ctx.modalHandlers.size).toBe(7);
+    expect(ctx.modalHandlers.size).toBe(9);
   });
 
   it('registers str prefix in all streamer interaction maps', () => {

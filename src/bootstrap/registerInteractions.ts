@@ -31,6 +31,9 @@ import { setupAddCategoryModal }      from '../interactions/modals/setupAddCateg
 import { changelogModalHandler }      from '../interactions/modals/changelogModalHandler';
 import { scumStatusModalHandler }     from '../interactions/modals/scumStatusModals';
 import { ticketArchivModalHandler }   from '../interactions/modals/ticketArchivModalHandler';
+import { ticketCloseReasonModalHandler } from '../interactions/modals/ticketCloseReasonModal';
+import { ticketNotePromptHandler, ticketNoteModalHandler } from '../interactions/modals/ticketNoteModal';
+import { ticketPriorityPromptHandler, ticketPrioritySelectHandler } from '../interactions/selectMenus/ticketPrioritySelect';
 
 // Streamer interactions (registers 'str' prefix in all maps)
 import { registerStreamerInteractions } from '../features/streamer/streamer.interactions';
@@ -42,6 +45,7 @@ export function registerInteractions(ctx: BootstrapContext): void {
     ticketClaimHandler, ticketAddPromptHandler, ticketRemovePromptHandler,
     acceptRulesHandler, setupButtonDispatcher, changelogButtonHandler,
     scumStatusSetupHandler, ticketArchivButtonHandler,
+    ticketPriorityPromptHandler, ticketNotePromptHandler,
   ]) {
     ctx.buttonHandlers.set(handler.prefix, handler);
   }
@@ -49,6 +53,7 @@ export function registerInteractions(ctx: BootstrapContext): void {
   // String select menus (2 named handlers)
   ctx.selectMenuHandlers.set(ticketCategoryHandler.prefix, ticketCategoryHandler);
   ctx.selectMenuHandlers.set(ticketArchivSelectHandler.prefix, ticketArchivSelectHandler);
+  ctx.selectMenuHandlers.set(ticketPrioritySelectHandler.prefix, ticketPrioritySelectHandler);
 
   // Channel selects (1 named handler)
   ctx.channelSelectHandlers.set(setupChannelSelectDispatcher.prefix, setupChannelSelectDispatcher);
@@ -56,10 +61,11 @@ export function registerInteractions(ctx: BootstrapContext): void {
   // Role selects (1 named handler)
   ctx.roleSelectHandlers.set(setupRoleSelectDispatcher.prefix, setupRoleSelectDispatcher);
 
-  // Modals (6 named handlers)
+  // Modals (8 named handlers)
   for (const handler of [
     ticketAddModalHandler, ticketRemoveModalHandler, setupAddCategoryModal,
     changelogModalHandler, scumStatusModalHandler, ticketArchivModalHandler,
+    ticketCloseReasonModalHandler, ticketNoteModalHandler,
   ]) {
     ctx.modalHandlers.set(handler.prefix, handler);
   }

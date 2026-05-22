@@ -5,6 +5,7 @@ import { SECTOR_COLORS } from '../ui/brand';
 import {
   findTicketByChannel, closeTicket,
   getAllOpenTickets, touchTicketActivity,
+  setTicketCloseReason,
 } from '../db/index';
 import { logEvent } from '../services/logService';
 import { archiveTicket } from '../services/ticketArchiveService';
@@ -108,6 +109,7 @@ async function fireAutoClose(channelId: string): Promise<void> {
     await archiveTicket(guild, channelId, ticket, _client.user?.id ?? 'auto-close');
 
     // DB schließen
+    setTicketCloseReason(channelId, 'Auto-close: Keine Aktivität (24 Stunden)');
     closeTicket(channelId);
 
     // Log
