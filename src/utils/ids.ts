@@ -8,6 +8,11 @@ export const IDS = {
   TICKET_REMOVE_PROMPT:  'ticket_remove_prompt',
   TICKET_ADD_MODAL:      'ticket_add_modal',
   TICKET_REMOVE_MODAL:   'ticket_remove_modal',
+  TICKET_PRIORITY_PROMPT:    'ticket_priority_prompt',
+  TICKET_PRIORITY:           'ticket_priority',
+  TICKET_NOTE_PROMPT:        'ticket_note_prompt',
+  TICKET_NOTE_MODAL:         'ticket_note',
+  TICKET_CLOSE_REASON_MODAL: 'ticket_close_reason',
   ACCEPT_RULES:          'accept_rules',
 } as const;
 

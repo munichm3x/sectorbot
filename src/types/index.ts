@@ -28,6 +28,13 @@ export interface Ticket {
   archive_channel_id?: string | null;
   username_snapshot?: string | null;
   closed_by_username_snapshot?: string | null;
+  // Ticket-System Verbesserungen (migration columns — null on older records)
+  priority?:           string | null;
+  close_reason?:       string | null;
+  tags?:               string | null;
+  transcript_path?:    string | null;
+  archived_at?:        number | null;
+  welcome_message_id?: string | null;
 }
 
 export interface Panel {
