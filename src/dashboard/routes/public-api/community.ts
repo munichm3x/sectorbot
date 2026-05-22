@@ -8,10 +8,44 @@ export function publicCommunityRouter(client: Client): Router {
 
   router.get('/', async (req: Request, res: Response) => {
     try {
-      const guildId = req.session.publicUser!.guildId;
-      const guild = client.guilds.cache.get(guildId);
+      const guildId = req.session.publicUser?.guildId ?? client.guilds.cache.first()?.id ?? null;
+      if (!guildId) {
+        res.json({
+          success: true,
+          data: {
+            memberCount: 0,
+            verified: null,
+            growth: {
+              joins7: 0,
+              joins30: 0,
+              byDay7: [],
+            },
+            topChannels: {
+              messages: [],
+              voice: [],
+            },
+          },
+        });
+        return;
+      }
+      const guild = client.guilds.cache.get(guildId) ?? client.guilds.cache.first() ?? null;
       if (!guild) {
-        res.status(404).json({ success: false, error: 'Guild nicht gefunden.' });
+        res.json({
+          success: true,
+          data: {
+            memberCount: 0,
+            verified: null,
+            growth: {
+              joins7: 0,
+              joins30: 0,
+              byDay7: [],
+            },
+            topChannels: {
+              messages: [],
+              voice: [],
+            },
+          },
+        });
         return;
       }
 

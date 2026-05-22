@@ -3,14 +3,43 @@
 // All requests include credentials (session cookie).
 
 const API = {
-  async _fetch(url, options = {}) {
-    const res = await fetch(url, { credentials: 'same-origin', ...options });
-    if (res.status === 401) { window.location.href = '/login.html'; throw new Error('Unauthenticated'); }
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? `HTTP ${res.status}`);
+  _timeoutMs: 15000,
+
+  _parseResponseBody: async (res) => {
+    const text = await res.text();
+    if (!text) return {};
+    try {
+      return JSON.parse(text);
+    } catch {
+      return {};
     }
-    return res.json();
+  },
+
+  async _fetch(url, options = {}) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), API._timeoutMs);
+    let res;
+    try {
+      res = await fetch(url, { credentials: 'same-origin', signal: controller.signal, ...options });
+    } catch (err) {
+      if (err?.name === 'AbortError') {
+        const timeoutError = new Error('Zeitüberschreitung bei der Server-Anfrage. Bitte erneut versuchen.');
+        timeoutError.status = 408;
+        throw timeoutError;
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (res.status === 401) { window.location.href = '/login.html'; throw new Error('Unauthenticated'); }
+    const body = await API._parseResponseBody(res);
+    if (!res.ok) {
+      const err = new Error(body.error ?? body.message ?? `HTTP ${res.status}`);
+      err.status = res.status;
+      err.payload = body;
+      throw err;
+    }
+    return body;
   },
 
   async get(path) { return this._fetch('/api' + path); },
@@ -46,6 +75,10 @@ const API = {
   // Convenience methods
   me:           () => API.get('/me'),
   overview:     () => API.get('/overview'),
+  heatmap:      (p) => API.get(`/analytics/heatmap?period=${p}`),
+  hourly:       (p) => API.get(`/analytics/hourly?period=${p}`),
+  engagement:   (p) => API.get(`/analytics/engagement?period=${p}`),
+  botHealth:    (p) => API.get(`/analytics/bot-health?period=${p}`),
   messages:     (p) => API.get(`/analytics/messages?period=${p}`),
   voice:        (p) => API.get(`/analytics/voice?period=${p}`),
   growth:       (p) => API.get(`/analytics/growth?period=${p}`),
@@ -61,6 +94,7 @@ const API = {
   auditLogs:    () => API.get('/logs/audit'),
   serverStatus: () => API.get('/server-status'),
   testStatus:   () => API.post('/server-status/test'),
+  exportUrl:    (dataset, format = 'csv', period = '7d') => `/api/analytics/export?${new URLSearchParams({ dataset, format, period })}`,
 
   // === Admin Content CRUD ===
   adminRules: {
@@ -120,8 +154,11 @@ const API = {
   publicPreview: () => API.get('/public-preview'),
   system: {
     get:           () => API.get('/system'),
+    doctor:        () => API.get('/system/doctor'),
+    configSummary: () => API.get('/system/config-summary'),
     cacheClear:    () => API.post('/system/cache-clear', {}),
     resyncCommands:() => API.post('/system/resync-commands', {}),
+    syncImport:    () => API.post('/system/sync-import', {}),
   },
 };
 

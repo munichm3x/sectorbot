@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import type { Client } from 'discord.js';
 import { overviewRouter } from './overview.routes';
-import { analyticsRouter } from './analytics.routes';
+import { buildAnalyticsRouter } from './analytics.routes';
 import { ticketsRouter } from './tickets.routes';
 import { settingsRouter } from './settings.routes';
 import { logsRouter } from './logs.routes';
@@ -28,7 +28,7 @@ export function buildApiRouter(client: Client): Router {
   });
 
   router.use('/overview',       overviewRouter(client));
-  router.use('/analytics',      analyticsRouter);
+  router.use('/analytics',      buildAnalyticsRouter(client));
   router.use('/tickets',        ticketsRouter);
   router.use('/settings',       settingsRouter);
   router.use('/logs',           logsRouter);

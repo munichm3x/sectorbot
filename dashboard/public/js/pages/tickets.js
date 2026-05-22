@@ -43,17 +43,17 @@ window['page-tickets'] = {
       if (tickets.length === 0) { wrap.innerHTML = emptyState('Keine Tickets gefunden.'); return; }
 
       wrap.innerHTML = `
-        <div class="table-wrap"><table>
+        <div class="table-wrap"><table class="responsive-table">
           <thead><tr><th>#</th><th>Kategorie</th><th>Status</th><th>Erstellt</th><th>Geschlossen</th><th>Bearbeiter</th><th>Zusammenfassung</th></tr></thead>
           <tbody>${tickets.map(t => `
             <tr class="clickable-row" onclick="window['page-tickets'].showDetail(${t.id})">
-              <td class="mono dim">${t.id}</td>
-              <td>${escapeHtml(t.category)}</td>
-              <td><span class="badge ${t.status==='open'?'badge-warning':'badge-neutral'}">${t.status}</span></td>
-              <td class="dim">${fmtDate(t.created_at)}</td>
-              <td class="dim">${t.closed_at ? fmtDate(t.closed_at) : '—'}</td>
-              <td class="dim">${escapeHtml(t.closed_by_username_snapshot ?? '—')}</td>
-              <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem;color:var(--text-muted)">${escapeHtml(t.summary ? t.summary.slice(0,120)+'…' : '—')}</td>
+              <td data-label="#" class="mono dim">${t.id}</td>
+              <td data-label="Kategorie">${escapeHtml(t.category)}</td>
+              <td data-label="Status"><span class="badge ${t.status==='open'?'badge-warning':'badge-neutral'}">${t.status}</span></td>
+              <td data-label="Erstellt" class="dim">${fmtDate(t.created_at)}</td>
+              <td data-label="Geschlossen" class="dim">${t.closed_at ? fmtDate(t.closed_at) : '—'}</td>
+              <td data-label="Bearbeiter" class="dim">${escapeHtml(t.closed_by_username_snapshot ?? '—')}</td>
+              <td data-label="Zusammenfassung" style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem;color:var(--text-muted)">${escapeHtml(t.summary ? t.summary.slice(0,120)+'…' : '—')}</td>
             </tr>
           `).join('')}</tbody>
         </table></div>
@@ -72,7 +72,10 @@ window['page-tickets'] = {
           pgEl.appendChild(btn);
         }
       }
-    } catch (err) { wrap.innerHTML = errorState(err.message); }
+    } catch (err) {
+      wrap.innerHTML = `${errorState(err.message)}<div class="cta-row" style="justify-content:center;padding:0 1rem 1rem"><button class="btn btn-ghost" id="tickets-retry">Erneut laden</button></div>`;
+      document.getElementById('tickets-retry')?.addEventListener('click', () => this.load());
+    }
   },
 
   showDetail(id) {

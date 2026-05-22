@@ -50,8 +50,8 @@ export function buildPublicApiRouter(client: Client): Router {
     res.json({ success: true, data: { userId, username, avatar, guildId } });
   });
 
-  router.use('/server', requirePublicAuth, publicServerRouter(client));
-  router.use('/community', requirePublicAuth, publicCommunityRouter(client));
+  router.use('/server', publicServerRouter(client));
+  router.use('/community', publicCommunityRouter(client));
 
   router.get('/rules', (req, res) => {
     try {

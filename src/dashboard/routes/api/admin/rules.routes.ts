@@ -4,6 +4,7 @@ import type { Client } from 'discord.js';
 import { requireContentEditor } from '../../../auth/middleware';
 import { logger } from '../../../../utils/logger';
 import { insertAuditLog } from '../../../../analytics/analytics.db';
+import { parsePositiveIntParam } from '../../shared/request-validators';
 import {
   listRules, getRule, createRule, updateRule, deleteRule, reorderRules,
 } from '../../../../db/index';
@@ -28,8 +29,8 @@ export function rulesAdminRouter(client: Client): Router {
   // GET /api/rules/:id
   router.get('/:id', (req, res) => {
     try {
-      const id = Number(req.params.id);
-      if (!Number.isFinite(id)) {
+      const id = parsePositiveIntParam(req.params.id);
+      if (!id) {
         res.status(400).json({ success: false, error: 'Invalid id' });
         return;
       }
@@ -117,9 +118,9 @@ export function rulesAdminRouter(client: Client): Router {
   // PATCH /api/rules/:id — update
   router.patch('/:id', (req, res) => {
     try {
-      const id = Number(req.params.id);
+      const id = parsePositiveIntParam(req.params.id);
       const user = req.session.user!;
-      if (!Number.isFinite(id)) {
+      if (!id) {
         res.status(400).json({ success: false, error: 'Invalid id' });
         return;
       }
@@ -155,9 +156,9 @@ export function rulesAdminRouter(client: Client): Router {
   // DELETE /api/rules/:id
   router.delete('/:id', (req, res) => {
     try {
-      const id = Number(req.params.id);
+      const id = parsePositiveIntParam(req.params.id);
       const user = req.session.user!;
-      if (!Number.isFinite(id)) {
+      if (!id) {
         res.status(400).json({ success: false, error: 'Invalid id' });
         return;
       }

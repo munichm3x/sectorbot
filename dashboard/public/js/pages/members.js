@@ -26,7 +26,9 @@ window['page-members'] = {
       members = data.members;
       self.renderTable(members);
     } catch (err) {
-      document.getElementById('member-table-wrap').innerHTML = errorState(err.message);
+      const wrap = document.getElementById('member-table-wrap');
+      wrap.innerHTML = `${errorState(err.message)}<div class="cta-row" style="justify-content:center;padding:0 1rem 1rem"><button class="btn btn-ghost" id="members-retry">Erneut laden</button></div>`;
+      document.getElementById('members-retry')?.addEventListener('click', () => this.render(container));
     }
   },
 
@@ -39,20 +41,20 @@ window['page-members'] = {
     if (filtered.length === 0) { wrap.innerHTML = emptyState('Keine Mitglieder gefunden.'); return; }
     wrap.innerHTML = `
       <div class="page-info" style="padding:.75rem 1rem">${filtered.length} Mitglieder</div>
-      <div class="table-wrap"><table>
+      <div class="table-wrap"><table class="responsive-table">
         <thead><tr><th>Name</th><th>Discord-ID</th><th>Beigetreten</th><th>Rollen</th><th>Tickets</th></tr></thead>
         <tbody>${filtered.slice(0, 200).map(m => `
           <tr>
-            <td>
+            <td data-label="Name">
               <div style="display:flex;align-items:center;gap:.5rem">
                 <img src="${escapeHtml(m.avatar)}" style="width:24px;height:24px;border-radius:50%;background:var(--surface-raised)" onerror="this.style.display='none'">
                 <span>${escapeHtml(m.displayName ?? m.username)}</span>
               </div>
             </td>
-            <td class="mono dim" style="font-size:.75rem">${m.id}</td>
-            <td class="dim">${m.joinedAt ? fmtDate(m.joinedAt / 1000) : '—'}</td>
-            <td style="font-size:.75rem">${m.roles.slice(0,3).map(r => `<span class="badge badge-neutral" style="margin-right:.2rem">${escapeHtml(r.name)}</span>`).join('')}${m.roles.length > 3 ? `<span class="dim">+${m.roles.length-3}</span>` : ''}</td>
-            <td class="dim">${m.ticketCount}</td>
+            <td data-label="Discord-ID" class="mono dim" style="font-size:.75rem">${m.id}</td>
+            <td data-label="Beigetreten" class="dim">${m.joinedAt ? fmtDate(m.joinedAt / 1000) : '—'}</td>
+            <td data-label="Rollen" style="font-size:.75rem">${m.roles.slice(0,3).map(r => `<span class="badge badge-neutral" style="margin-right:.2rem">${escapeHtml(r.name)}</span>`).join('')}${m.roles.length > 3 ? `<span class="dim">+${m.roles.length-3}</span>` : ''}</td>
+            <td data-label="Tickets" class="dim">${m.ticketCount}</td>
           </tr>
         `).join('')}</tbody>
       </table></div>

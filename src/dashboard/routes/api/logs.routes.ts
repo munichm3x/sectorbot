@@ -3,14 +3,16 @@ import { Router } from 'express';
 import { getLogBuffer } from '../../../utils/logger';
 import { getAuditLogs } from '../../../analytics/analytics.db';
 import { requirePermission, PermLevel } from '../../auth/middleware';
+import { parseLimitQuery, parseSearchQuery } from '../shared/request-validators';
 
 export const logsRouter = Router();
 logsRouter.use(requirePermission(PermLevel.Moderator));
 
 logsRouter.get('/', (req, res) => {
   try {
-    const level  = (req.query.level  as string) ?? '';
-    const search = (req.query.search as string) ?? '';
+    const levelRaw = req.query.level;
+    const level = typeof levelRaw === 'string' ? levelRaw.toLowerCase() : '';
+    const search = parseSearchQuery(req.query.search, 200);
     let entries  = getLogBuffer();
     if (level)  entries = entries.filter(e => e.level === level);
     if (search) entries = entries.filter(e => e.message.toLowerCase().includes(search.toLowerCase()));
@@ -41,7 +43,7 @@ logsRouter.get('/stream', (req, res) => {
 logsRouter.get('/audit', requirePermission(PermLevel.Admin), (req, res) => {
   try {
     const guildId = req.session.user!.guildId;
-    const limit   = Math.min(200, parseInt(req.query.limit as string) || 50);
+    const limit   = parseLimitQuery(req.query.limit, 50, 1, 200);
     res.json({ success: true, data: getAuditLogs(guildId, limit) });
   } catch { res.status(500).json({ success: false, error: 'Internal error' }); }
 });

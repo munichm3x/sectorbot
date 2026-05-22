@@ -62,7 +62,12 @@ window['page-logs'] = {
     if (this.eventSource) return;
     this.eventSource = new EventSource('/api/logs/stream', { withCredentials: true });
     this.eventSource.onmessage = (e) => {
-      const entries = JSON.parse(e.data);
+      let entries = [];
+      try {
+        entries = JSON.parse(e.data);
+      } catch {
+        entries = [];
+      }
       if (entries.length > 0) this.appendLogs(entries);
     };
     this.eventSource.onerror = () => { this.stopStream(); };
@@ -115,20 +120,22 @@ window['page-logs'] = {
       const out = document.getElementById('audit-output');
       if (data.length === 0) { out.innerHTML = emptyState('Noch keine Audit-Einträge.'); return; }
       out.innerHTML = `
-        <div class="table-wrap"><table>
+        <div class="table-wrap"><table class="responsive-table">
           <thead><tr><th>Zeit</th><th>Admin</th><th>Aktion</th><th>Status</th></tr></thead>
           <tbody>${data.map(r => `
             <tr>
-              <td class="dim mono" style="font-size:.75rem">${fmtDate(r.created_at)}</td>
-              <td class="dim mono" style="font-size:.75rem">${escapeHtml(r.admin_user_id.slice(0,8))}…</td>
-              <td class="mono" style="font-size:.78rem">${escapeHtml(r.action)}</td>
-              <td><span class="badge ${r.success?'badge-online':'badge-offline'}">${r.success?'OK':'Fehler'}</span></td>
+              <td data-label="Zeit" class="dim mono" style="font-size:.75rem">${fmtDate(r.created_at)}</td>
+              <td data-label="Admin" class="dim mono" style="font-size:.75rem">${escapeHtml(r.admin_user_id.slice(0,8))}…</td>
+              <td data-label="Aktion" class="mono" style="font-size:.78rem">${escapeHtml(r.action)}</td>
+              <td data-label="Status"><span class="badge ${r.success?'badge-online':'badge-offline'}">${r.success?'OK':'Fehler'}</span></td>
             </tr>
           `).join('')}</tbody>
         </table></div>
       `;
     } catch (err) {
-      document.getElementById('audit-output').innerHTML = errorState(err.message);
+      const out = document.getElementById('audit-output');
+      out.innerHTML = `${errorState(err.message)}<div class="cta-row" style="justify-content:center;padding:0 1rem 1rem"><button class="btn btn-ghost" id="audit-retry">Erneut laden</button></div>`;
+      document.getElementById('audit-retry')?.addEventListener('click', () => this.loadAudit());
     }
   },
 };

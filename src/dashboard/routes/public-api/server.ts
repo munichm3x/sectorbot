@@ -2,17 +2,38 @@ import { Router, type Request, type Response } from 'express';
 import type { Client } from 'discord.js';
 import { getLatestServerStatus, getServerStatusHistory, getPeakPlayers } from '../../../analytics/analytics.db';
 import { getDb, getWipeInfo, getServerPublicInfo } from '../../../db';
-import { buildWipeInfoPayload, buildServerPublicInfoPayload } from './public-data';
+import { buildWipeInfoPayload, buildServerPublicInfoPayload, sanitizeStatusHistory } from './public-data';
 
 const PERIODS: Record<string, number> = { '24h': 86_400, '7d': 604_800, '30d': 2_592_000 };
 
-export function publicServerRouter(_client: Client): Router {
+export function publicServerRouter(client: Client): Router {
   const router = Router();
 
   // GET /public-api/server
   router.get('/', (req: Request, res: Response) => {
     try {
-      const guildId = req.session.publicUser!.guildId;
+      const guildId = req.session.publicUser?.guildId ?? client.guilds.cache.first()?.id ?? null;
+      if (!guildId) {
+        res.json({
+          success: true,
+          data: {
+            current: null,
+            history: [],
+            uptime24h: null,
+            uptime7d: null,
+            peak24h: 0,
+            peak7d: 0,
+            config: null,
+            configCards: [],
+            wipe: null,
+            serverInfo: null,
+            status: null,
+            uptime: { hours24: null, days7: null },
+            peak: { hours24: 0, days7: 0 },
+          },
+        });
+        return;
+      }
       const db = getDb();
       const config = db.prepare(
         'SELECT host, query_port, enabled, update_interval_secs FROM scum_status_config WHERE guild_id = ?'
@@ -31,27 +52,45 @@ export function publicServerRouter(_client: Client): Router {
 
       const wipe = getWipeInfo(guildId);
       const serverInfo = getServerPublicInfo(guildId);
+      const current = latest ? {
+        online: !!latest.online,
+        playersOnline: latest.players_online,
+        maxPlayers: latest.max_players,
+        ping: latest.ping,
+        checkedAt: latest.checked_at,
+      } : null;
+      const history = sanitizeStatusHistory(history24);
+      const publicConfig = config ? {
+        enabled: !!config.enabled,
+        host: config.host ? maskHost(config.host) : null,
+        queryPort: config.query_port,
+        updateIntervalSecs: config.update_interval_secs,
+      } : null;
 
       res.json({
         success: true,
         data: {
-          status: latest ? {
-            online: !!latest.online,
-            playersOnline: latest.players_online,
-            maxPlayers: latest.max_players,
-            ping: latest.ping,
-            lastCheck: latest.checked_at,
-          } : null,
-          config: config ? {
-            enabled: !!config.enabled,
-            host: config.host ? maskHost(config.host) : null,
-            queryPort: config.query_port,
-            updateIntervalSecs: config.update_interval_secs,
+          current,
+          history,
+          uptime24h: uptime24,
+          uptime7d: uptime7,
+          peak24h: peak24,
+          peak7d: peak7,
+          config: publicConfig,
+          configCards: [
+            { label: 'Serverstatus', value: publicConfig?.enabled ? 'Aktiv überwacht' : 'Nicht konfiguriert', state: publicConfig?.enabled ? 'online' : 'warning' },
+            ...(publicConfig?.host ? [{ label: 'Host', value: publicConfig.host }] : []),
+            ...(publicConfig?.queryPort != null ? [{ label: 'Query Port', value: String(publicConfig.queryPort) }] : []),
+            ...(publicConfig?.updateIntervalSecs != null ? [{ label: 'Polling', value: `${publicConfig.updateIntervalSecs}s` }] : []),
+          ],
+          wipe: buildWipeInfoPayload(wipe),
+          serverInfo: buildServerPublicInfoPayload(serverInfo),
+          status: current ? {
+            ...current,
+            lastCheck: current.checkedAt,
           } : null,
           uptime: { hours24: uptime24, days7: uptime7 },
           peak: { hours24: peak24, days7: peak7 },
-          wipe: buildWipeInfoPayload(wipe),
-          serverInfo: buildServerPublicInfoPayload(serverInfo),
         },
       });
     } catch {
@@ -62,17 +101,23 @@ export function publicServerRouter(_client: Client): Router {
   // GET /public-api/server/history?period=24h|7d|30d
   router.get('/history', (req: Request, res: Response) => {
     try {
-      const guildId = req.session.publicUser!.guildId;
+      const guildId = req.session.publicUser?.guildId ?? client.guilds.cache.first()?.id ?? null;
+      if (!guildId) {
+        res.json({ success: true, data: [] });
+        return;
+      }
       const period = String(req.query.period ?? '24h');
       const secs = PERIODS[period] ?? 86_400;
       const since = Math.floor(Date.now() / 1000) - secs;
       const history = getServerStatusHistory(guildId, since, 1000);
       res.json({
         success: true,
-        data: history.map(h => ({
-          ts: h.checked_at,
-          online: !!h.online,
-          players: h.players_online,
+        data: sanitizeStatusHistory(history).map(h => ({
+          ts: h.checkedAt,
+          checkedAt: h.checkedAt,
+          online: h.online,
+          players: h.playersOnline,
+          playersOnline: h.playersOnline,
           ping: h.ping,
         })),
       });

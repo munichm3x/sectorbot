@@ -7,6 +7,7 @@ const PAGE_TITLES = {
   overview: 'Übersicht',
   server: 'Server',
   community: 'Community',
+  statistik: 'Statistik',
   rules: 'Regeln',
   events: 'Events',
   changelog: 'Changelog',

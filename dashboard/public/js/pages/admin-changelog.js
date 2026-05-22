@@ -175,6 +175,7 @@ window['page-admin-changelog'] = {
       </div>
       <div class="crud-actions">
         <button class="btn btn-primary" id="cl-save">${isNew ? 'Anlegen' : 'Speichern'}</button>
+        <button class="btn btn-ghost" id="cl-preview">Vorschau</button>
         ${isDraft ? '<button class="btn btn-primary" id="cl-publish" style="background:var(--online);border-color:var(--online)">Veröffentlichen</button>' : ''}
         ${isNew ? '' : '<button class="btn btn-danger" id="cl-delete">Löschen</button>'}
         <button class="btn btn-ghost" id="cl-cancel">Abbrechen</button>
@@ -184,6 +185,7 @@ window['page-admin-changelog'] = {
     `;
 
     document.getElementById('cl-save').addEventListener('click', () => this.save(id));
+    document.getElementById('cl-preview').addEventListener('click', () => this.preview());
     document.getElementById('cl-cancel').addEventListener('click', () => {
       this.state.selectedId = null;
       this.renderList();
@@ -246,4 +248,61 @@ window['page-admin-changelog'] = {
       toast('Fehler: ' + (err.message || 'Löschen fehlgeschlagen'), 'error');
     }
   },
+
+  preview() {
+    const existing = document.getElementById('admin-changelog-preview');
+    if (existing) existing.remove();
+
+    const title = document.getElementById('cl-edit-title')?.value?.trim() || 'Ohne Titel';
+    const category = document.getElementById('cl-edit-cat')?.value || 'server';
+    const version = document.getElementById('cl-edit-version')?.value?.trim();
+    const body = document.getElementById('cl-edit-body')?.value?.trim() || '';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'admin-changelog-preview';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal">
+        <div class="modal-header">
+          <div>
+            <div class="kicker">${escapeHtml(this.CATEGORY_LABELS[category] || category)}</div>
+            <div class="modal-title">${escapeHtml(title)}</div>
+          </div>
+          <button class="modal-close" type="button" data-close-modal>✕</button>
+        </div>
+        <div class="cta-row" style="margin-top:0;margin-bottom:1rem">
+          ${version ? `<span class="badge badge-neutral">v${escapeHtml(version)}</span>` : ''}
+          <span class="badge badge-accent">Vorschau</span>
+        </div>
+        <div class="modal-field-value">${formatChangelogPreview(body)}</div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', event => {
+      if (event.target === overlay || event.target.closest('[data-close-modal]')) overlay.remove();
+    });
+  },
 };
+
+function formatChangelogPreview(text) {
+  const source = String(text ?? '').trim();
+  if (!source) return '<p>Kein Inhalt hinterlegt.</p>';
+
+  return source
+    .split(/\n\s*\n/)
+    .map(block => block.trim())
+    .filter(Boolean)
+    .map(block => {
+      const lines = block.split(/\n+/).map(line => line.trim()).filter(Boolean);
+      if (!lines.length) return '';
+      const bulletLines = lines.filter(line => /^([-•*]|\d+[.)])\s+/.test(line));
+      if (bulletLines.length === lines.length) {
+        const ordered = /^\d+[.)]\s+/.test(lines[0]);
+        const tag = ordered ? 'ol' : 'ul';
+        return `<${tag}>${lines.map(line => `<li>${escapeHtml(line.replace(/^([-•*]|\d+[.)])\s+/, ''))}</li>`).join('')}</${tag}>`;
+      }
+      return `<p>${lines.map(line => escapeHtml(line)).join('<br>')}</p>`;
+    })
+    .join('');
+}

@@ -4,8 +4,9 @@ window['page-overview'] = {
     const root = document.getElementById('overview-content');
 
     try {
-      const [{ data }, announcementsRes, eventsRes, changelogRes] = await Promise.all([
+      const [{ data }, engagementRes, announcementsRes, eventsRes, changelogRes] = await Promise.all([
         API.overview(),
+        API.engagement('7d').catch(() => ({ data: null })),
         API.announcements(),
         API.events(),
         API.changelog(),
@@ -15,6 +16,7 @@ window['page-overview'] = {
       const guild = data.guild;
       const activity = data.activity ?? {};
       const community = data.community ?? {};
+      const engagement = engagementRes.data ?? null;
       const announcements = announcementsRes.data.announcements ?? [];
       const events = eventsRes.data.events ?? [];
       const changelog = changelogRes.data.changelog ?? [];
@@ -32,9 +34,46 @@ window['page-overview'] = {
           </div>
           <div class="cta-row">
             <button class="btn btn-primary" onclick="navigateTo('server')">Serverstatus ansehen</button>
+            <button class="btn btn-ghost" onclick="navigateTo('statistik')">Analytics öffnen</button>
             <button class="btn btn-ghost" onclick="navigateTo('rules')">Regeln lesen</button>
           </div>
         </section>
+
+        ${engagement ? `
+          <section class="analytics-public-strip">
+            <div class="analytics-public-panel analytics-public-split">
+              <div>
+                <div class="kicker">Community Analytics</div>
+                <h3>Engagement Score</h3>
+                <p>Verdichteter Überblick aus Nachrichten, Voice-Zeit und Mitgliederwachstum der letzten 7 Tage.</p>
+                <div class="cta-row">
+                  <span class="badge badge-accent">Messages ${fmt(engagement.breakdown?.messages?.value ?? 0)}</span>
+                  <span class="badge badge-online">Voice ${Charts.fmtDuration(engagement.breakdown?.voice?.value ?? 0)}</span>
+                  <span class="badge badge-neutral">Joins ${fmt(engagement.breakdown?.joins?.value ?? 0)}</span>
+                </div>
+              </div>
+              <div class="score-ring-wrap" style="width:150px;height:150px">
+                <canvas id="public-overview-score"></canvas>
+                <div class="score-ring-value">
+                  <span class="score-number">${escapeHtml(String(engagement.score ?? 0))}</span>
+                  <span class="score-label">/ 100</span>
+                </div>
+              </div>
+            </div>
+            <div class="analytics-public-panel">
+              <div class="kicker">SCUM Auslastung</div>
+              <h3>Live Player Gauge</h3>
+              <p>Aktuelle Auslastung des Servers inklusive schneller Orientierung für Peak und Ping.</p>
+              <div class="gauge-wrap">
+                <canvas id="public-overview-gauge"></canvas>
+                <div class="gauge-value">
+                  <div class="gauge-number">${server ? `${fmt(server.playersOnline)}/${fmt(server.maxPlayers)}` : '—'}</div>
+                  <div class="gauge-sub">Spieler online</div>
+                </div>
+              </div>
+            </div>
+          </section>
+        ` : ''}
 
         <div class="stat-grid">
           ${statCard('Discord Mitglieder', guild ? fmt(guild.memberCount) : '-', guild?.name ?? 'Community')}
@@ -67,6 +106,13 @@ window['page-overview'] = {
           ${changelog.length ? changelog.slice(0, 5).map(renderChangelog).join('') : emptyState('Noch keine öffentlichen Updates veröffentlicht.', 'Sobald Changelogs persistent gespeichert werden, erscheinen sie hier.')}
         </section>
       `;
+
+      if (engagement) {
+        Charts.radialScore('public-overview-score', engagement.score ?? 0);
+      }
+      if (server?.maxPlayers) {
+        Charts.gauge('public-overview-gauge', server.playersOnline ?? 0, Math.max(server.maxPlayers ?? 0, 1), { color: '#3bca6e' });
+      }
     } catch {
       root.innerHTML = errorState();
     }

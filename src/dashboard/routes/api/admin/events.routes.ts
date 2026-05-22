@@ -4,6 +4,7 @@ import type { Client } from 'discord.js';
 import { requireContentEditor } from '../../../auth/middleware';
 import { logger } from '../../../../utils/logger';
 import { insertAuditLog } from '../../../../analytics/analytics.db';
+import { parsePositiveIntParam } from '../../shared/request-validators';
 import {
   listPublicEvents, getPublicEvent, createPublicEvent, updatePublicEvent, deletePublicEvent,
 } from '../../../../db/index';
@@ -29,8 +30,8 @@ export function eventsAdminRouter(client: Client): Router {
   // GET /api/events/:id
   router.get('/:id', (req, res) => {
     try {
-      const id = Number(req.params.id);
-      if (!Number.isFinite(id)) {
+      const id = parsePositiveIntParam(req.params.id);
+      if (!id) {
         res.status(400).json({ success: false, error: 'Invalid id' });
         return;
       }
@@ -115,9 +116,9 @@ export function eventsAdminRouter(client: Client): Router {
   // PATCH /api/events/:id — update
   router.patch('/:id', (req, res) => {
     try {
-      const id = Number(req.params.id);
+      const id = parsePositiveIntParam(req.params.id);
       const user = req.session.user!;
-      if (!Number.isFinite(id)) {
+      if (!id) {
         res.status(400).json({ success: false, error: 'Invalid id' });
         return;
       }
@@ -162,9 +163,9 @@ export function eventsAdminRouter(client: Client): Router {
   // DELETE /api/events/:id
   router.delete('/:id', (req, res) => {
     try {
-      const id = Number(req.params.id);
+      const id = parsePositiveIntParam(req.params.id);
       const user = req.session.user!;
-      if (!Number.isFinite(id)) {
+      if (!id) {
         res.status(400).json({ success: false, error: 'Invalid id' });
         return;
       }

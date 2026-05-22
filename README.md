@@ -205,6 +205,37 @@ If Ollama is unavailable or times out, the Old Man replies from a built-in pool 
 
 ---
 
+## Dashboard Analytics
+
+Das Projekt enthält jetzt zwei getrennte Analytics-Oberflächen:
+
+- **Public Dashboard:** `/public/`
+   - Neue Seite **Statistik** mit anonymisierten Community-, Voice-, Wachstum- und SCUM-Server-Charts
+   - Öffentliche Server- und Community-Routen laden jetzt auch ohne Login robust mit Fallbacks statt in einen globalen Fehlerzustand zu kippen
+   - SCUM-Statusseite nutzt normalisierte 24h-Historie, Uptime-/Peak-Kacheln und stabilere Spieler-/Ping-Charts
+   - Regeln werden als strukturierte Desktop-Karten statt als unformatierte Textblöcke dargestellt
+   - Öffentliche Changelogs sind anklickbar und öffnen eine Detailansicht mit formatiertem Volltext
+   - Keine Usernamen, IDs oder personenbezogenen Rankings
+- **Admin Dashboard:** `/`
+   - Neuer **Analytics Hub** mit Tabs für Overview, Members, Activity, Voice, Streams, Teams/Roles, Channels, Tickets, Bot Health, SCUM Server und Settings
+   - Changelog-Einträge besitzen jetzt eine Dashboard-Vorschau als gerenderte Detailansicht
+   - Periodenfilter (`24h`, `7d`, `30d`, `90d`, `all`) und CSV-/JSON-Export
+
+### Analytics konfigurieren
+
+Im Admin-Dashboard unter **Dashboard-Einstellungen** stehen zusätzliche Analytics-Optionen bereit:
+
+- Public-Sichtbarkeit für Analytics aktivieren/deaktivieren
+- Engagement-/SCUM-/Growth-/Channel-Module für Public steuern
+- Default-Zeitraum und Refresh-Intervall setzen
+- Chart-Stil und Tooltip-/Mini-Trend-Verhalten anpassen
+
+### Datenquellen
+
+Die Analytics greifen auf die serverseitig aggregierten Tabellen im bestehenden Analytics-System zu. Öffentliche Routen liefern ausschließlich aggregierte Werte; detailliertere Ansichten bleiben auf geschützte Admin-Endpunkte beschränkt.
+
+---
+
 ## Troubleshooting
 
 ### „Das Ticket-System ist nicht konfiguriert"

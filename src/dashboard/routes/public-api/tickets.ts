@@ -7,6 +7,7 @@
 
 import { Router } from 'express';
 import { getDb } from '../../../db/index';
+import { parseEnumQuery, parsePageQuery, parsePositiveIntParam, parseSearchQuery } from '../shared/request-validators';
 
 export const publicTicketsRouter = Router();
 
@@ -15,9 +16,9 @@ publicTicketsRouter.get('/mine', (req, res) => {
   try {
     const guildId = req.session.publicUser!.guildId;
     const userId  = req.session.publicUser!.userId;
-    const status  = (req.query.status as string) ?? 'all';
-    const page    = Math.max(1, parseInt(req.query.page as string) || 1);
-    const search  = ((req.query.search as string) ?? '').trim();
+    const status  = parseEnumQuery(req.query.status, ['open', 'closed', 'all'] as const, 'all');
+    const page    = parsePageQuery(req.query.page, 1, 10_000);
+    const search  = parseSearchQuery(req.query.search, 120);
     const limit   = 25;
     const offset  = (page - 1) * limit;
     const db      = getDb();
@@ -53,8 +54,8 @@ publicTicketsRouter.get('/mine/:id', (req, res) => {
   try {
     const guildId = req.session.publicUser!.guildId;
     const userId  = req.session.publicUser!.userId;
-    const id      = parseInt(req.params.id);
-    if (isNaN(id)) {
+    const id      = parsePositiveIntParam(req.params.id);
+    if (!id) {
       res.status(400).json({ success: false, error: 'Invalid ID' });
       return;
     }

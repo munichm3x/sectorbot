@@ -8,6 +8,7 @@ window.AppState = { user: null };
 const PAGE_TITLES = {
   // Existing entries
   'overview':             'Dashboard',
+  'analytics-hub':        'Analytics Hub',
   'public-preview':       'Public Preview',
   'analytics-messages':   'Nachrichten Analytics',
   'analytics-voice':      'Voice Analytics',
@@ -18,6 +19,7 @@ const PAGE_TITLES = {
   'tickets':              'Tickets',
   'members':              'Mitglieder',
   'server-status':        'Serverstatus',
+  'operations-center':    'Operations Center',
   'logs':                 'Logs',
   'ai':                   'AI',
   // Content management
