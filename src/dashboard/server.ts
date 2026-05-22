@@ -7,6 +7,7 @@ import session from 'express-session';
 import connectSqlite3 from 'connect-sqlite3';
 import { join } from 'path';
 import { mkdirSync } from 'fs';
+import helmet from 'helmet';
 import type { Client } from 'discord.js';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
@@ -26,6 +27,22 @@ export function startDashboard(client: Client): void {
 
   // Trust proxy (important when behind nginx/PM2 for correct req.ip)
   app.set('trust proxy', 1);
+
+  // Security headers
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc:  ["'self'"],
+        scriptSrc:   ["'self'", "'unsafe-inline'"],
+        styleSrc:    ["'self'", "'unsafe-inline'"],
+        imgSrc:      ["'self'", 'data:', 'https://cdn.discordapp.com'],
+        connectSrc:  ["'self'"],
+        fontSrc:     ["'self'"],
+        objectSrc:   ["'none'"],
+        frameSrc:    ["'none'"],
+      },
+    },
+  }));
 
   // Ensure session DB directory exists
   const DATA_DIR = join(process.cwd(), 'data');
