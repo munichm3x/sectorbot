@@ -44,6 +44,9 @@ logsRouter.get('/audit', requirePermission(PermLevel.Admin), (req, res) => {
   try {
     const guildId = req.session.user!.guildId;
     const limit   = parseLimitQuery(req.query.limit, 50, 1, 200);
-    res.json({ success: true, data: getAuditLogs(guildId, limit) });
+    const rows    = getAuditLogs(guildId, limit);
+    // Strip raw change payloads from the API response
+    const safe = rows.map(({ old_value: _o, new_value: _n, ...rest }) => rest);
+    res.json({ success: true, data: safe });
   } catch { res.status(500).json({ success: false, error: 'Internal error' }); }
 });
