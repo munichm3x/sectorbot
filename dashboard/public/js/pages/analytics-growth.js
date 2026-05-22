@@ -7,7 +7,8 @@ window['page-analytics-growth'] = {
       <div class="page-header"><h1>Wachstum Analytics</h1><p>Aggregierte Join/Leave-Statistiken — keine personenbezogenen Daten.</p></div>
       <div id="gr-period"></div>
       <div id="gr-stats" class="stat-grid"></div>
-      <div class="chart-card" style="margin-top:1rem"><div class="card-title" style="margin-bottom:.75rem">Joins & Leaves pro Tag</div><div style="height:250px"><canvas id="gr-chart"></canvas></div></div>
+      <div class="section-header" style="margin-top:1.5rem"><div class="section-title">Verlauf & Aufschlüsselung</div></div>
+      <div class="chart-card"><div class="card-header"><div class="card-title">Joins & Leaves pro Tag</div></div><div style="height:250px"><canvas id="gr-chart"></canvas></div></div>
     `;
     const pb = periodBar(self.period, (p) => { self.period = p; self.load(); });
     document.getElementById('gr-period').replaceWith(pb); pb.id = 'gr-period';
@@ -22,9 +23,9 @@ window['page-analytics-growth'] = {
       const leaves = byDay.reduce((a, r) => a + r.leaves, 0);
 
       document.getElementById('gr-stats').innerHTML = `
-        <div class="stat-card"><div class="stat-label">Joins</div><div class="stat-value" style="color:var(--online)">${fmt(joins)}</div><div class="stat-sub">${this.period}</div></div>
-        <div class="stat-card"><div class="stat-label">Leaves</div><div class="stat-value" style="color:var(--offline)">${fmt(leaves)}</div><div class="stat-sub">${this.period}</div></div>
-        <div class="stat-card"><div class="stat-label">Netto</div><div class="stat-value" style="color:${joins-leaves>=0?'var(--online)':'var(--offline)'}">${joins-leaves>=0?'+':''}${joins-leaves}</div><div class="stat-sub">Wachstum</div></div>
+        <div class="stat-card online"><div class="stat-label">Joins</div><div class="stat-value" style="color:var(--online)">${fmt(joins)}</div><div class="stat-sub">${this.period}</div></div>
+        <div class="stat-card offline"><div class="stat-label">Leaves</div><div class="stat-value" style="color:var(--offline)">${fmt(leaves)}</div><div class="stat-sub">${this.period}</div></div>
+        <div class="stat-card accent"><div class="stat-label">Netto</div><div class="stat-value" style="color:${joins-leaves>=0?'var(--online)':'var(--offline)'}">${joins-leaves>=0?'+':''}${joins-leaves}</div><div class="stat-sub">Wachstum</div></div>
       `;
 
       if (byDay.length > 0) {

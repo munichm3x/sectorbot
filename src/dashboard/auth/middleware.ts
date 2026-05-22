@@ -20,6 +20,7 @@ export interface DashboardUser {
   username:  string;
   avatar:    string | null;
   permLevel: PermLevel;
+  isContentEditor: boolean;
   guildId:   string;
 }
 
@@ -86,6 +87,21 @@ export function requirePermission(level: PermLevel) {
     }
     next();
   };
+}
+
+/** Require Moderator+ OR isContentEditor flag (for content CRUD routes). */
+export function requireContentEditor(req: Request, res: Response, next: NextFunction): void {
+  const user = req.session.user;
+  if (!user || (user.permLevel < PermLevel.Moderator && !user.isContentEditor)) {
+    res.status(403).json({ success: false, error: 'Insufficient permissions' });
+    return;
+  }
+  next();
+}
+
+/** Check if a list of role IDs includes any from a configured list. */
+export function isContentEditorFromRoles(roles: string[]): boolean {
+  return env.DASHBOARD_EDITOR_ROLE_IDS.some(r => roles.includes(r));
 }
 
 // ─── Simple in-process rate limiter ──────────────────────────────────────────

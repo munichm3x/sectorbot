@@ -6,8 +6,20 @@ import {
   buildDashboardEmbed, buildDashboardComponents,
   ensureChangelogDashboard,
 } from '../../features/changelogDashboard';
-import { getChangelogConfig } from '../../db/index';
-import type { ButtonHandler } from '../../types';
+import { getChangelogConfig, createChangelogEntry, publishChangelog } from '../../db/index';
+import { markOutbound } from '../../services/discordSync';
+import { logger } from '../../utils/logger';
+import type { ButtonHandler, ChangelogDraft } from '../../types';
+
+function formatDraftAsPlainBody(draft: ChangelogDraft): string {
+  const parts: string[] = [];
+  if (draft.added?.trim())   parts.push('**Hinzugefügt:**\n' + draft.added.trim());
+  if (draft.changed?.trim()) parts.push('**Geändert:**\n' + draft.changed.trim());
+  if (draft.fixed?.trim())   parts.push('**Behoben:**\n' + draft.fixed.trim());
+  if (draft.removed?.trim()) parts.push('**Entfernt:**\n' + draft.removed.trim());
+  if (draft.notes?.trim())   parts.push('**Notizen:**\n' + draft.notes.trim());
+  return parts.join('\n\n');
+}
 
 function hasManageGuild(interaction: ButtonInteraction): boolean {
   if (!interaction.inCachedGuild()) return false;
@@ -110,7 +122,28 @@ export const changelogButtonHandler: ButtonHandler = {
       }
 
       const embed = buildChangelogEmbed(draft, { createdBy: user.username });
-      await publicChannel.send({ embeds: [embed] });
+      const sent = await publicChannel.send({ embeds: [embed] });
+
+      // Persist to DB so Dashboard sees this entry
+      try {
+        const body        = formatDraftAsPlainBody(draft);
+        const title       = draft.title || (draft.version ? `Update v${draft.version}` : 'Update');
+        const publishedAt = Math.floor(Date.now() / 1000);
+        const entry       = createChangelogEntry({
+          guild_id:       guildId,
+          title,
+          body,
+          category:       'server',
+          version:        draft.version || null,
+          status:         'published',
+          public_visible: 1,
+          created_by:     user.id,
+        });
+        publishChangelog(entry.id, publishedAt, sent.id);
+        markOutbound(`message:${sent.id}`);
+      } catch (err) {
+        logger.error('[changelog] DB persist failed (Discord post succeeded):', err);
+      }
 
       deleteDraft(key);
 

@@ -9,6 +9,14 @@ import {
   CREATE_STREAMER_CONFIG_TABLE,
   CREATE_STREAMERS_TABLE,
   CREATE_STREAM_LIVE_STATES_TABLE,
+  CREATE_RULES_TABLE, CREATE_RULES_INDEX,
+  CREATE_PUBLIC_EVENTS_TABLE, CREATE_PUBLIC_EVENTS_INDEX,
+  CREATE_CHANGELOG_ENTRIES_TABLE, CREATE_CHANGELOG_ENTRIES_INDEX,
+  CREATE_PUBLIC_ANNOUNCEMENTS_TABLE, CREATE_PUBLIC_ANNOUNCEMENTS_INDEX,
+  CREATE_FAQ_ITEMS_TABLE, CREATE_FAQ_ITEMS_INDEX,
+  CREATE_BOT_SETTINGS_TABLE, CREATE_BOT_SETTINGS_INDEX,
+  CREATE_WIPE_INFO_TABLE,
+  CREATE_SERVER_PUBLIC_INFO_TABLE,
 } from './schema';
 import {
   CREATE_SERVER_STATUS_HISTORY,
@@ -20,7 +28,7 @@ import {
   CREATE_MEMBER_EVENTS,
   CREATE_DASHBOARD_AUDIT_LOGS,
 } from '../analytics/analytics.schema';
-import type { Ticket, Panel, GuildConfig, TicketCategoryConfig, ChangelogConfig, ScumStatusConfig } from '../types';
+import type { Ticket, Panel, GuildConfig, TicketCategoryConfig, ChangelogConfig, ScumStatusConfig, RuleEntry, PublicEvent, ChangelogEntry, PublicAnnouncement, FaqItem, BotSetting, WipeInfo, ServerPublicInfo } from '../types';
 import { logger } from '../utils/logger';
 
 let db: Database.Database;
@@ -52,6 +60,22 @@ export function initDb(path: string): void {
   db.exec(CREATE_STREAMER_CONFIG_TABLE);
   db.exec(CREATE_STREAMERS_TABLE);
   db.exec(CREATE_STREAM_LIVE_STATES_TABLE);
+  db.exec(CREATE_RULES_TABLE);
+  db.exec(CREATE_RULES_INDEX);
+  db.exec(CREATE_PUBLIC_EVENTS_TABLE);
+  db.exec(CREATE_PUBLIC_EVENTS_INDEX);
+  db.exec(CREATE_CHANGELOG_ENTRIES_TABLE);
+  db.exec(CREATE_CHANGELOG_ENTRIES_INDEX);
+  db.exec(CREATE_PUBLIC_ANNOUNCEMENTS_TABLE);
+  db.exec(CREATE_PUBLIC_ANNOUNCEMENTS_INDEX);
+  db.exec(CREATE_FAQ_ITEMS_TABLE);
+  db.exec(CREATE_FAQ_ITEMS_INDEX);
+  db.exec(CREATE_BOT_SETTINGS_TABLE);
+  db.exec(CREATE_BOT_SETTINGS_INDEX);
+  db.exec(CREATE_WIPE_INFO_TABLE);
+  db.exec(CREATE_SERVER_PUBLIC_INFO_TABLE);
+  try { db.exec(`ALTER TABLE public_events ADD COLUMN discord_event_id TEXT`); } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE public_announcements ADD COLUMN discord_message_id TEXT`); } catch { /* already exists */ }
   db.exec(`CREATE TABLE IF NOT EXISTS msg_dedup (id TEXT PRIMARY KEY, ts INTEGER NOT NULL)`);
   initAnalyticsDb();
   if (path !== ':memory:') logger.info(`Datenbank initialisiert: ${path}`);
@@ -489,4 +513,427 @@ export function claimMessage(messageId: string): boolean {
     // UNIQUE-Constraint verletzt → bereits von einer anderen Instanz verarbeitet
     return false;
   }
+}
+
+// ─── Rules ───────────────────────────────────────────────────────────────────
+
+export function listRules(guildId: string, opts?: { publicOnly?: boolean }): RuleEntry[] {
+  const where = opts?.publicOnly ? 'WHERE guild_id = ? AND public_visible = 1' : 'WHERE guild_id = ?';
+  return getDb().prepare(`SELECT * FROM rules ${where} ORDER BY category, sort_order, id`).all(guildId) as RuleEntry[];
+}
+
+export function getRule(id: number): RuleEntry | null {
+  return getDb().prepare('SELECT * FROM rules WHERE id = ?').get(id) as RuleEntry | undefined ?? null;
+}
+
+export function createRule(input: { guild_id: string; category: string; title: string; body: string; sort_order?: number; public_visible?: number; created_by?: string | null }): RuleEntry {
+  const now = Math.floor(Date.now() / 1000);
+  const result = getDb().prepare(`
+    INSERT INTO rules (guild_id, category, title, body, sort_order, public_visible, created_by, updated_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    input.guild_id, input.category, input.title, input.body,
+    input.sort_order ?? 0, input.public_visible ?? 1,
+    input.created_by ?? null, input.created_by ?? null, now, now,
+  );
+  return getRule(Number(result.lastInsertRowid))!;
+}
+
+export function updateRule(id: number, patch: { category?: string; title?: string; body?: string; sort_order?: number; public_visible?: number; updated_by?: string | null }): RuleEntry | null {
+  const existing = getRule(id);
+  if (!existing) return null;
+  const now = Math.floor(Date.now() / 1000);
+  getDb().prepare(`
+    UPDATE rules SET
+      category = COALESCE(?, category),
+      title = COALESCE(?, title),
+      body = COALESCE(?, body),
+      sort_order = COALESCE(?, sort_order),
+      public_visible = COALESCE(?, public_visible),
+      updated_by = ?,
+      updated_at = ?
+    WHERE id = ?
+  `).run(
+    patch.category ?? null, patch.title ?? null, patch.body ?? null,
+    patch.sort_order ?? null, patch.public_visible ?? null,
+    patch.updated_by ?? null, now, id,
+  );
+  return getRule(id);
+}
+
+export function deleteRule(id: number): boolean {
+  const result = getDb().prepare('DELETE FROM rules WHERE id = ?').run(id);
+  return result.changes > 0;
+}
+
+export function reorderRules(guildId: string, category: string, orderedIds: number[]): void {
+  const stmt = getDb().prepare('UPDATE rules SET sort_order = ? WHERE id = ? AND guild_id = ? AND category = ?');
+  const txn = getDb().transaction((ids: number[]) => {
+    ids.forEach((id, idx) => stmt.run(idx, id, guildId, category));
+  });
+  txn(orderedIds);
+}
+
+// ─── Public Events ────────────────────────────────────────────────────────────
+
+export function listPublicEvents(guildId: string, opts?: { publicOnly?: boolean }): PublicEvent[] {
+  const where = opts?.publicOnly ? 'WHERE guild_id = ? AND public_visible = 1' : 'WHERE guild_id = ?';
+  return getDb().prepare(`SELECT * FROM public_events ${where} ORDER BY starts_at`).all(guildId) as PublicEvent[];
+}
+
+export function getPublicEvent(id: number): PublicEvent | null {
+  return getDb().prepare('SELECT * FROM public_events WHERE id = ?').get(id) as PublicEvent | undefined ?? null;
+}
+
+export function createPublicEvent(input: { guild_id: string; title: string; description?: string | null; event_type?: string; starts_at: number; ends_at?: number | null; status?: string; discord_url?: string | null; banner_url?: string | null; public_visible?: number; created_by?: string | null }): PublicEvent {
+  const now = Math.floor(Date.now() / 1000);
+  const result = getDb().prepare(`
+    INSERT INTO public_events (guild_id, title, description, event_type, starts_at, ends_at, status, discord_url, banner_url, public_visible, created_by, updated_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    input.guild_id, input.title, input.description ?? null,
+    input.event_type ?? 'community', input.starts_at, input.ends_at ?? null,
+    input.status ?? 'scheduled', input.discord_url ?? null, input.banner_url ?? null,
+    input.public_visible ?? 1, input.created_by ?? null, input.created_by ?? null, now, now,
+  );
+  return getPublicEvent(Number(result.lastInsertRowid))!;
+}
+
+export function updatePublicEvent(id: number, patch: { title?: string; description?: string | null; event_type?: string; starts_at?: number; ends_at?: number | null; status?: string; discord_url?: string | null; banner_url?: string | null; public_visible?: number; updated_by?: string | null }): PublicEvent | null {
+  const existing = getPublicEvent(id);
+  if (!existing) return null;
+  const now = Math.floor(Date.now() / 1000);
+  getDb().prepare(`
+    UPDATE public_events SET
+      title = COALESCE(?, title),
+      description = COALESCE(?, description),
+      event_type = COALESCE(?, event_type),
+      starts_at = COALESCE(?, starts_at),
+      ends_at = COALESCE(?, ends_at),
+      status = COALESCE(?, status),
+      discord_url = COALESCE(?, discord_url),
+      banner_url = COALESCE(?, banner_url),
+      public_visible = COALESCE(?, public_visible),
+      updated_by = ?,
+      updated_at = ?
+    WHERE id = ?
+  `).run(
+    patch.title ?? null, patch.description ?? null, patch.event_type ?? null,
+    patch.starts_at ?? null, patch.ends_at ?? null, patch.status ?? null,
+    patch.discord_url ?? null, patch.banner_url ?? null, patch.public_visible ?? null,
+    patch.updated_by ?? null, now, id,
+  );
+  return getPublicEvent(id);
+}
+
+export function deletePublicEvent(id: number): boolean {
+  const result = getDb().prepare('DELETE FROM public_events WHERE id = ?').run(id);
+  return result.changes > 0;
+}
+
+// ─── Changelog Entries ────────────────────────────────────────────────────────
+
+export function listChangelogEntries(guildId: string, opts?: { publicOnly?: boolean }): ChangelogEntry[] {
+  const where = opts?.publicOnly ? 'WHERE guild_id = ? AND public_visible = 1' : 'WHERE guild_id = ?';
+  return getDb().prepare(`SELECT * FROM changelog_entries ${where} ORDER BY published_at DESC, id DESC`).all(guildId) as ChangelogEntry[];
+}
+
+export function getChangelogEntry(id: number): ChangelogEntry | null {
+  return getDb().prepare('SELECT * FROM changelog_entries WHERE id = ?').get(id) as ChangelogEntry | undefined ?? null;
+}
+
+export function createChangelogEntry(input: { guild_id: string; title: string; body: string; category?: string; version?: string | null; status?: string; public_visible?: number; created_by?: string | null }): ChangelogEntry {
+  const now = Math.floor(Date.now() / 1000);
+  const result = getDb().prepare(`
+    INSERT INTO changelog_entries (guild_id, title, body, category, version, status, published_at, discord_message_id, public_visible, created_by, updated_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, ?)
+  `).run(
+    input.guild_id, input.title, input.body,
+    input.category ?? 'server', input.version ?? null,
+    input.status ?? 'draft', input.public_visible ?? 1,
+    input.created_by ?? null, input.created_by ?? null, now, now,
+  );
+  return getChangelogEntry(Number(result.lastInsertRowid))!;
+}
+
+export function updateChangelogEntry(id: number, patch: { title?: string; body?: string; category?: string; version?: string | null; status?: string; public_visible?: number; updated_by?: string | null }): ChangelogEntry | null {
+  const existing = getChangelogEntry(id);
+  if (!existing) return null;
+  const now = Math.floor(Date.now() / 1000);
+  getDb().prepare(`
+    UPDATE changelog_entries SET
+      title = COALESCE(?, title),
+      body = COALESCE(?, body),
+      category = COALESCE(?, category),
+      version = COALESCE(?, version),
+      status = COALESCE(?, status),
+      public_visible = COALESCE(?, public_visible),
+      updated_by = ?,
+      updated_at = ?
+    WHERE id = ?
+  `).run(
+    patch.title ?? null, patch.body ?? null, patch.category ?? null,
+    patch.version ?? null, patch.status ?? null, patch.public_visible ?? null,
+    patch.updated_by ?? null, now, id,
+  );
+  return getChangelogEntry(id);
+}
+
+export function deleteChangelogEntry(id: number): boolean {
+  const result = getDb().prepare('DELETE FROM changelog_entries WHERE id = ?').run(id);
+  return result.changes > 0;
+}
+
+export function publishChangelog(id: number, publishedAt: number, discordMessageId: string | null): ChangelogEntry | null {
+  const existing = getChangelogEntry(id);
+  if (!existing) return null;
+  const now = Math.floor(Date.now() / 1000);
+  getDb().prepare(`
+    UPDATE changelog_entries SET
+      status = 'published',
+      published_at = ?,
+      discord_message_id = ?,
+      updated_at = ?
+    WHERE id = ?
+  `).run(publishedAt, discordMessageId, now, id);
+  return getChangelogEntry(id);
+}
+
+// ─── Public Announcements ─────────────────────────────────────────────────────
+
+export function listPublicAnnouncements(guildId: string, opts?: { publicOnly?: boolean; activeOnly?: boolean }): PublicAnnouncement[] {
+  let where = 'WHERE guild_id = ?';
+  if (opts?.publicOnly) where += ' AND public_visible = 1';
+  if (opts?.activeOnly) where += ' AND active = 1';
+  return getDb().prepare(`SELECT * FROM public_announcements ${where} ORDER BY priority DESC, starts_at`).all(guildId) as PublicAnnouncement[];
+}
+
+export function getPublicAnnouncement(id: number): PublicAnnouncement | null {
+  return getDb().prepare('SELECT * FROM public_announcements WHERE id = ?').get(id) as PublicAnnouncement | undefined ?? null;
+}
+
+export function createPublicAnnouncement(input: { guild_id: string; title: string; body: string; announcement_type?: string; priority?: number; starts_at: number; ends_at?: number | null; show_as_banner?: number; active?: number; public_visible?: number; created_by?: string | null }): PublicAnnouncement {
+  const now = Math.floor(Date.now() / 1000);
+  const result = getDb().prepare(`
+    INSERT INTO public_announcements (guild_id, title, body, announcement_type, priority, starts_at, ends_at, show_as_banner, active, public_visible, created_by, updated_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    input.guild_id, input.title, input.body,
+    input.announcement_type ?? 'info', input.priority ?? 0,
+    input.starts_at, input.ends_at ?? null,
+    input.show_as_banner ?? 0, input.active ?? 1,
+    input.public_visible ?? 1, input.created_by ?? null, input.created_by ?? null, now, now,
+  );
+  return getPublicAnnouncement(Number(result.lastInsertRowid))!;
+}
+
+export function updatePublicAnnouncement(id: number, patch: { title?: string; body?: string; announcement_type?: string; priority?: number; starts_at?: number; ends_at?: number | null; show_as_banner?: number; active?: number; public_visible?: number; updated_by?: string | null }): PublicAnnouncement | null {
+  const existing = getPublicAnnouncement(id);
+  if (!existing) return null;
+  const now = Math.floor(Date.now() / 1000);
+  getDb().prepare(`
+    UPDATE public_announcements SET
+      title = COALESCE(?, title),
+      body = COALESCE(?, body),
+      announcement_type = COALESCE(?, announcement_type),
+      priority = COALESCE(?, priority),
+      starts_at = COALESCE(?, starts_at),
+      ends_at = COALESCE(?, ends_at),
+      show_as_banner = COALESCE(?, show_as_banner),
+      active = COALESCE(?, active),
+      public_visible = COALESCE(?, public_visible),
+      updated_by = ?,
+      updated_at = ?
+    WHERE id = ?
+  `).run(
+    patch.title ?? null, patch.body ?? null, patch.announcement_type ?? null,
+    patch.priority ?? null, patch.starts_at ?? null, patch.ends_at ?? null,
+    patch.show_as_banner ?? null, patch.active ?? null, patch.public_visible ?? null,
+    patch.updated_by ?? null, now, id,
+  );
+  return getPublicAnnouncement(id);
+}
+
+export function deletePublicAnnouncement(id: number): boolean {
+  const result = getDb().prepare('DELETE FROM public_announcements WHERE id = ?').run(id);
+  return result.changes > 0;
+}
+
+// ─── FAQ Items ────────────────────────────────────────────────────────────────
+
+export function listFaqItems(guildId: string, opts?: { publicOnly?: boolean }): FaqItem[] {
+  const where = opts?.publicOnly ? 'WHERE guild_id = ? AND public_visible = 1' : 'WHERE guild_id = ?';
+  return getDb().prepare(`SELECT * FROM faq_items ${where} ORDER BY category, sort_order, id`).all(guildId) as FaqItem[];
+}
+
+export function getFaqItem(id: number): FaqItem | null {
+  return getDb().prepare('SELECT * FROM faq_items WHERE id = ?').get(id) as FaqItem | undefined ?? null;
+}
+
+export function createFaqItem(input: { guild_id: string; category: string; question: string; answer: string; sort_order?: number; public_visible?: number; created_by?: string | null }): FaqItem {
+  const now = Math.floor(Date.now() / 1000);
+  const result = getDb().prepare(`
+    INSERT INTO faq_items (guild_id, category, question, answer, sort_order, public_visible, created_by, updated_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    input.guild_id, input.category, input.question, input.answer,
+    input.sort_order ?? 0, input.public_visible ?? 1,
+    input.created_by ?? null, input.created_by ?? null, now, now,
+  );
+  return getFaqItem(Number(result.lastInsertRowid))!;
+}
+
+export function updateFaqItem(id: number, patch: { category?: string; question?: string; answer?: string; sort_order?: number; public_visible?: number; updated_by?: string | null }): FaqItem | null {
+  const existing = getFaqItem(id);
+  if (!existing) return null;
+  const now = Math.floor(Date.now() / 1000);
+  getDb().prepare(`
+    UPDATE faq_items SET
+      category = COALESCE(?, category),
+      question = COALESCE(?, question),
+      answer = COALESCE(?, answer),
+      sort_order = COALESCE(?, sort_order),
+      public_visible = COALESCE(?, public_visible),
+      updated_by = ?,
+      updated_at = ?
+    WHERE id = ?
+  `).run(
+    patch.category ?? null, patch.question ?? null, patch.answer ?? null,
+    patch.sort_order ?? null, patch.public_visible ?? null,
+    patch.updated_by ?? null, now, id,
+  );
+  return getFaqItem(id);
+}
+
+export function deleteFaqItem(id: number): boolean {
+  const result = getDb().prepare('DELETE FROM faq_items WHERE id = ?').run(id);
+  return result.changes > 0;
+}
+
+export function reorderFaqItems(guildId: string, category: string, orderedIds: number[]): void {
+  const stmt = getDb().prepare('UPDATE faq_items SET sort_order = ? WHERE id = ? AND guild_id = ? AND category = ?');
+  const txn = getDb().transaction((ids: number[]) => {
+    ids.forEach((id, idx) => stmt.run(idx, id, guildId, category));
+  });
+  txn(orderedIds);
+}
+
+// ─── Bot Settings ─────────────────────────────────────────────────────────────
+
+function maskSetting(row: BotSetting): BotSetting {
+  if (row.is_secret === 1 && row.setting_value !== null) {
+    return { ...row, setting_value: '***' };
+  }
+  return row;
+}
+
+export function listSettings(guildId: string, category: string, opts?: { includeSecrets?: boolean }): BotSetting[] {
+  const rows = getDb().prepare('SELECT * FROM bot_settings WHERE guild_id = ? AND category = ?').all(guildId, category) as BotSetting[];
+  if (opts?.includeSecrets) return rows;
+  return rows.map(maskSetting);
+}
+
+export function getSetting(guildId: string, category: string, key: string): BotSetting | null {
+  const row = getDb().prepare('SELECT * FROM bot_settings WHERE guild_id = ? AND category = ? AND setting_key = ?').get(guildId, category, key) as BotSetting | undefined;
+  if (!row) return null;
+  return maskSetting(row);
+}
+
+export function getSettingRaw(guildId: string, category: string, key: string): BotSetting | null {
+  return getDb().prepare('SELECT * FROM bot_settings WHERE guild_id = ? AND category = ? AND setting_key = ?').get(guildId, category, key) as BotSetting | undefined ?? null;
+}
+
+export function upsertSetting(input: { guildId: string; category: string; key: string; value: string | null; isSecret?: number; updatedBy?: string | null }): BotSetting {
+  const now = Math.floor(Date.now() / 1000);
+  getDb().prepare(`
+    INSERT INTO bot_settings (guild_id, category, setting_key, setting_value, is_secret, updated_by, updated_at, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(guild_id, category, setting_key) DO UPDATE SET
+      setting_value = excluded.setting_value,
+      is_secret     = COALESCE(excluded.is_secret, is_secret),
+      updated_by    = excluded.updated_by,
+      updated_at    = excluded.updated_at
+  `).run(
+    input.guildId, input.category, input.key,
+    input.value, input.isSecret ?? 0, input.updatedBy ?? null, now, now,
+  );
+  return getSetting(input.guildId, input.category, input.key)!;
+}
+
+export function deleteSetting(guildId: string, category: string, key: string): boolean {
+  const result = getDb().prepare('DELETE FROM bot_settings WHERE guild_id = ? AND category = ? AND setting_key = ?').run(guildId, category, key);
+  return result.changes > 0;
+}
+
+// ─── Wipe Info ────────────────────────────────────────────────────────────────
+
+export function getWipeInfo(guildId: string): WipeInfo | null {
+  return getDb().prepare('SELECT * FROM wipe_info WHERE guild_id = ?').get(guildId) as WipeInfo | undefined ?? null;
+}
+
+export function upsertWipeInfo(input: { guildId: string; currentSeason?: number | null; seasonName?: string | null; lastWipeAt?: number | null; lastWipeType?: string | null; nextWipeAt?: number | null; nextWipeType?: string | null; notes?: string | null; publicVisible?: number; updatedBy?: string | null }): WipeInfo {
+  const now = Math.floor(Date.now() / 1000);
+  getDb().prepare(`
+    INSERT INTO wipe_info (guild_id, current_season, season_name, last_wipe_at, last_wipe_type, next_wipe_at, next_wipe_type, notes, public_visible, updated_by, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(guild_id) DO UPDATE SET
+      current_season = COALESCE(excluded.current_season, current_season),
+      season_name    = COALESCE(excluded.season_name,    season_name),
+      last_wipe_at   = COALESCE(excluded.last_wipe_at,   last_wipe_at),
+      last_wipe_type = COALESCE(excluded.last_wipe_type, last_wipe_type),
+      next_wipe_at   = COALESCE(excluded.next_wipe_at,   next_wipe_at),
+      next_wipe_type = COALESCE(excluded.next_wipe_type, next_wipe_type),
+      notes          = COALESCE(excluded.notes,          notes),
+      public_visible = COALESCE(excluded.public_visible, public_visible),
+      updated_by     = excluded.updated_by,
+      updated_at     = excluded.updated_at
+  `).run(
+    input.guildId,
+    input.currentSeason ?? null, input.seasonName ?? null,
+    input.lastWipeAt ?? null, input.lastWipeType ?? null,
+    input.nextWipeAt ?? null, input.nextWipeType ?? null,
+    input.notes ?? null, input.publicVisible ?? 1,
+    input.updatedBy ?? null, now,
+  );
+  return getWipeInfo(input.guildId)!;
+}
+
+// ─── Server Public Info ───────────────────────────────────────────────────────
+
+export function getServerPublicInfo(guildId: string): ServerPublicInfo | null {
+  return getDb().prepare('SELECT * FROM server_public_info WHERE guild_id = ?').get(guildId) as ServerPublicInfo | undefined ?? null;
+}
+
+export function upsertServerPublicInfo(input: { guildId: string; serverName?: string | null; description?: string | null; gameMode?: string | null; maxTeamSize?: number | null; soloColor?: string | null; lootRate?: string | null; safezones?: number | null; permadeath?: number | null; vehicleLimit?: string | null; baseLimit?: string | null; restartTimes?: string | null; mapRegion?: string | null; joinHint?: string | null; showHostInPublic?: number; updatedBy?: string | null }): ServerPublicInfo {
+  const now = Math.floor(Date.now() / 1000);
+  getDb().prepare(`
+    INSERT INTO server_public_info (guild_id, server_name, description, game_mode, max_team_size, solo_color, loot_rate, safezones, permadeath, vehicle_limit, base_limit, restart_times, map_region, join_hint, show_host_in_public, updated_by, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(guild_id) DO UPDATE SET
+      server_name         = COALESCE(excluded.server_name,         server_name),
+      description         = COALESCE(excluded.description,         description),
+      game_mode           = COALESCE(excluded.game_mode,           game_mode),
+      max_team_size       = COALESCE(excluded.max_team_size,       max_team_size),
+      solo_color          = COALESCE(excluded.solo_color,          solo_color),
+      loot_rate           = COALESCE(excluded.loot_rate,           loot_rate),
+      safezones           = COALESCE(excluded.safezones,           safezones),
+      permadeath          = COALESCE(excluded.permadeath,          permadeath),
+      vehicle_limit       = COALESCE(excluded.vehicle_limit,       vehicle_limit),
+      base_limit          = COALESCE(excluded.base_limit,          base_limit),
+      restart_times       = COALESCE(excluded.restart_times,       restart_times),
+      map_region          = COALESCE(excluded.map_region,          map_region),
+      join_hint           = COALESCE(excluded.join_hint,           join_hint),
+      show_host_in_public = COALESCE(excluded.show_host_in_public, show_host_in_public),
+      updated_by          = excluded.updated_by,
+      updated_at          = excluded.updated_at
+  `).run(
+    input.guildId,
+    input.serverName ?? null, input.description ?? null, input.gameMode ?? null,
+    input.maxTeamSize ?? null, input.soloColor ?? null, input.lootRate ?? null,
+    input.safezones ?? null, input.permadeath ?? null,
+    input.vehicleLimit ?? null, input.baseLimit ?? null,
+    input.restartTimes ?? null, input.mapRegion ?? null, input.joinHint ?? null,
+    input.showHostInPublic ?? 0, input.updatedBy ?? null, now,
+  );
+  return getServerPublicInfo(input.guildId)!;
 }

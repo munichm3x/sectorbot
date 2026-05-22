@@ -7,9 +7,10 @@ window['page-analytics-messages'] = {
       <div class="page-header"><h1>Nachrichten Analytics</h1><p>Aggregierte Nachrichtenaktivität — kein Nachrichteninhalt gespeichert.</p></div>
       <div id="msg-period"></div>
       <div id="msg-stats" class="stat-grid" style="margin-bottom:1rem"></div>
+      <div class="section-header" style="margin-top:1.5rem"><div class="section-title">Verlauf & Aufschlüsselung</div></div>
       <div class="grid-2">
-        <div class="chart-card"><div class="card-title" style="margin-bottom:.75rem">Nachrichten pro Tag</div><div style="height:220px"><canvas id="msg-daily-chart"></canvas></div></div>
-        <div class="chart-card"><div class="card-title" style="margin-bottom:.75rem">Top Channels</div><div style="height:220px"><canvas id="msg-channel-chart"></canvas></div></div>
+        <div class="chart-card"><div class="card-header"><div class="card-title">Nachrichten pro Tag</div></div><div style="height:220px"><canvas id="msg-daily-chart"></canvas></div></div>
+        <div class="chart-card"><div class="card-header"><div class="card-title">Top Channels</div></div><div style="height:220px"><canvas id="msg-channel-chart"></canvas></div></div>
       </div>
     `;
 
@@ -33,7 +34,7 @@ window['page-analytics-messages'] = {
       const { byDay, byChannel, total } = data;
 
       statsEl.innerHTML = `
-        <div class="stat-card"><div class="stat-label">Gesamt</div><div class="stat-value">${fmt(total)}</div><div class="stat-sub">${this.period}</div></div>
+        <div class="stat-card accent"><div class="stat-label">Gesamt</div><div class="stat-value">${fmt(total)}</div><div class="stat-sub">${this.period}</div></div>
         <div class="stat-card"><div class="stat-label">Aktive Channels</div><div class="stat-value">${byChannel.length}</div><div class="stat-sub">mit Aktivität</div></div>
         <div class="stat-card"><div class="stat-label">Ø pro Tag</div><div class="stat-value">${byDay.length > 0 ? fmt(Math.round(total / byDay.length)) : '—'}</div><div class="stat-sub">Tagesdurchschnitt</div></div>
       `;

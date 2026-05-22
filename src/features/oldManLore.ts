@@ -1,8 +1,9 @@
 /**
- * OldManLore — Daniel, der alte Söldner auf der Insel.
+ * OldManLore — Daniel, alter Söldner auf der Insel.
  *
- * v3 — Anti-Repeat, Intent-Detection, echte Chat-Turns (user/assistant),
- *      NO_REPLY-Support, Jaccard-Ähnlichkeitsprüfung, ein Retry.
+ * v4 — Modulare AI-Provider-Architektur (Gemini primär, Groq/OpenRouter Fallback),
+ *      Discord-Context-Building (Reply + Channel-History),
+ *      Quality Gate, Knowledge-Loading aus data/knowledge/
  */
 
 import { Client, TextChannel } from 'discord.js';
@@ -10,6 +11,9 @@ import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import { getOldManChannel, claimMessage } from '../db/index';
 import { trackAiEvent } from '../analytics/analytics.db';
+import { askAI } from '../services/ai/aiService';
+import { buildDiscordContext } from '../services/ai/contextBuilder';
+import type { ChatMessage } from '../services/ai/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,8 +23,6 @@ export type LoreCommand =
 
 export type Intent =
   | 'insult' | 'joke' | 'smalltalk' | 'question' | 'support' | 'scum_gameplay' | 'unclear';
-
-type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
 type UserMemory = {
   displayName:  string;
@@ -209,6 +211,10 @@ function buildSystemPrompt(intent: Intent, botReplies: string[]): string {
       `\nWenn du dazu nichts Neues sagen kannst — antworte mit NO_REPLY.`
     : '';
 
+  const noReplyRule = botReplies.length > 0
+    ? `\nREGEL: Wenn du keine neue sinnvolle Antwort hast die sich von deinen vorherigen unterscheidet — antworte mit exakt: NO_REPLY`
+    : '';
+
   return `Du bist Daniel. Kein Chatbot. Keine KI. Ein Mensch — alter Söldner, zu lange auf dieser Insel.
 
 Ehemaliger Spezialeinheiten-Söldner. Drei Kriege, zwei Verurteilungen, eine gestohlene Begnadigung. Auf der Insel bevor TEC1 die Kameras aufgestellt hat. Du erinnerst dich an die ersten Puppen, Bunker die auf keiner Karte stehen.
@@ -219,43 +225,78 @@ Charakter: Direkt bis zur Unhöflichkeit. Schwarzer Humor als Schutzmechanismus.
 
 Sprache: Kurze Sätze. 1-4 Sätze insgesamt. Kein Markdown. Keine Listen. Grammatikalisch korrekt. Niemals: "Ich helfe dir gerne" / "Gute Frage" / "Natürlich" / "Als erfahrener" / "Es tut mir leid" / "Zunächst".
 
-AKTUELLE SITUATION: ${INTENT_NOTE[intent]}${antiRepeat}
-
-REGEL: Wenn du keine neue sinnvolle Antwort hast die sich von deinen vorherigen unterscheidet — antworte mit exakt: NO_REPLY
+AKTUELLE SITUATION: ${INTENT_NOTE[intent]}${antiRepeat}${noReplyRule}
 Antworte in der Sprache des Nutzers. Brich niemals den Charakter.`;
 }
 
-// ─── Chat-Kontext bauen (echte user/assistant Turns) ─────────────────────────
+// ─── Chat-Kontext bauen (echte user/assistant Turns + Discord-Kontext) ────────
 
 export function buildMessages(
   userMessage: string,
   memory:      UserMemory,
   command:     LoreCommand,
   intent:      Intent,
+  discordCtx?: import('../services/ai/types').DiscordContext,
 ): ChatMessage[] {
   const msgs: ChatMessage[] = [
     { role: 'system', content: buildSystemPrompt(intent, memory.botReplies) },
   ];
 
-  // Bisherigen Gesprächsverlauf als echte Chat-Turns einweben
-  // User-History und Bot-Replies werden abwechselnd als user/assistant übergeben.
-  const histUser = memory.userMessages.slice(0, -1); // alle außer aktueller
-  const histBot  = memory.botReplies;
+  // ── Knowledge-Kontext (Serverregeln, SCUM-Wissen) ─────────────────────────
+  if (discordCtx?.knowledge) {
+    msgs.push({
+      role:    'user',
+      content: `[HINTERGRUNDWISSEN — Nur wenn direkt relevant nutzen, nicht wörtlich zitieren]:\n${discordCtx.knowledge.slice(0, 1200)}`,
+    });
+    msgs.push({ role: 'assistant', content: 'Verstanden. Ich nutze dieses Wissen nur wenn konkret gefragt wird.' });
+  }
 
-  const pairs = Math.min(histUser.length, histBot.length);
+  // ── Channel-Verlauf (letzte N Nachrichten aus dem Channel) ───────────────
+  if (discordCtx && discordCtx.channelHistory.length > 0) {
+    const historyBlock = discordCtx.channelHistory
+      .slice(-10)
+      .map(e => `${e.isBot ? '[Daniel]' : e.authorName}: ${e.content}`)
+      .join('\n');
+    msgs.push({
+      role:    'user',
+      content: `[CHANNEL-VERLAUF (älteste zuerst — NICHT erneut beantworten!)]:\n${historyBlock}`,
+    });
+    msgs.push({ role: 'assistant', content: 'Kontext gelesen.' });
+  }
+
+  // ── Discord-Reply (Original-Nachricht auf die der User antwortet) ─────────
+  if (discordCtx?.replyTo) {
+    msgs.push({
+      role:    'user',
+      content: `[${discordCtx.replyTo.authorName} hat vorher geschrieben]: "${discordCtx.replyTo.content}"`,
+    });
+    msgs.push({ role: 'assistant', content: 'Ich sehe die zitierte Nachricht.' });
+  }
+
+  // ── Bisherigen Gesprächsverlauf des Users als echte Chat-Turns ────────────
+  const histUser = memory.userMessages.slice(0, -1);
+  const histBot  = memory.botReplies;
+  const pairs    = Math.min(histUser.length, histBot.length);
+
   for (let i = 0; i < pairs; i++) {
     msgs.push({ role: 'user',      content: trimToLength(histUser[i], 300) });
     msgs.push({ role: 'assistant', content: trimToLength(histBot[i],  300) });
   }
-  // Falls mehr User-Turns als Bot-Turns (frühe Nachrichten ohne Antwort)
   for (let i = pairs; i < histUser.length; i++) {
     msgs.push({ role: 'user', content: trimToLength(histUser[i], 300) });
   }
 
-  // Aktuelle Nachricht — mit optionalem Command-Direktiv und Nickname
+  // ── Aktuelle Nachricht (mit Kontext-Hints) ────────────────────────────────
   let current = trimToLength(userMessage, MAX_INPUT_LEN);
-  if (command) current = `[${COMMAND_DIRECTIVES[command]}]\n${current}`;
+  if (command)         current = `[${COMMAND_DIRECTIVES[command]}]\n${current}`;
   if (memory.nickname) current = `[Spitzname dieses Users: ${memory.nickname}]\n${current}`;
+
+  if (discordCtx) {
+    const ctx: string[] = [];
+    if (discordCtx.authorRoles.length > 0) ctx.push(`Rollen: ${discordCtx.authorRoles.join(', ')}`);
+    if (discordCtx.channelName)            ctx.push(`Kanal: #${discordCtx.channelName}`);
+    if (ctx.length > 0) current = `[${ctx.join(' | ')}]\n` + current;
+  }
 
   msgs.push({ role: 'user', content: current });
 
@@ -272,66 +313,11 @@ export function trimToLength(text: string, max: number): string {
 
 // ─── LLM-Anfragen ─────────────────────────────────────────────────────────────
 
-export async function askLLM(messages: ChatMessage[]): Promise<string> {
-  if (env.GROQ_API_KEY) return askGroq(messages);
-  return askOllama(messages);
-}
+// ─── LLM-Anfragen → zentraler AIService ──────────────────────────────────────
+// Provider-Auswahl, Fallback und Quality Gate sind in
+// src/services/ai/aiService.ts gekapselt. askAI() gibt immer ein AskResult zurück.
 
-async function askGroq(messages: ChatMessage[]): Promise<string> {
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type':  'application/json',
-      'Authorization': `Bearer ${env.GROQ_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model:       'llama-3.3-70b-versatile',
-      messages,
-      max_tokens:  220,
-      temperature: 0.82,
-    }),
-  });
 
-  if (!res.ok) throw new Error(`Groq HTTP ${res.status}`);
-
-  const data = await res.json() as { choices?: { message?: { content?: string } }[] };
-  const text = (data.choices?.[0]?.message?.content ?? '').trim();
-  if (!text) throw new Error('Groq returned empty response');
-  return trimToLength(text, MAX_OUTPUT_LEN);
-}
-
-async function askOllama(messages: ChatMessage[]): Promise<string> {
-  // Ollama generate-Format: system + Konversation als Text zusammenbauen
-  const system = messages.find(m => m.role === 'system')?.content ?? '';
-  const conversation = messages
-    .filter(m => m.role !== 'system')
-    .map(m => (m.role === 'user' ? 'User' : 'Daniel') + ': ' + m.content)
-    .join('\n');
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), env.OLLAMA_TIMEOUT_MS);
-
-  try {
-    const res = await fetch(env.OLLAMA_URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model:  env.OLLAMA_MODEL,
-        prompt: `${system}\n\n${conversation}\nDaniel:`,
-        stream: false,
-      }),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
-    const data = await res.json() as { response?: string };
-    const text = (data.response ?? '').trim();
-    if (!text) throw new Error('Ollama returned empty response');
-    return trimToLength(text, MAX_OUTPUT_LEN);
-  } finally {
-    clearTimeout(timeout);
-  }
-}
 
 // ─── Memory-Helpers ───────────────────────────────────────────────────────────
 
@@ -378,9 +364,6 @@ export function setupOldManLore(client: Client): void {
     if (now - (cooldowns.get(userId) ?? 0) < env.OLD_MAN_COOLDOWN_MS) return;
     cooldowns.set(userId, now);
 
-    const aiProvider = env.GROQ_API_KEY ? 'groq' : 'ollama';
-    const aiModel    = env.GROQ_API_KEY ? 'llama-3.3-70b-versatile' : env.OLLAMA_MODEL;
-
     const channel = message.channel;
     if (!('sendTyping' in channel)) return;
     await (channel as TextChannel).sendTyping().catch(() => void 0);
@@ -391,22 +374,51 @@ export function setupOldManLore(client: Client): void {
     const command     = detectCommand(userInput);
     const intent      = detectIntent(userInput);
 
+    // Discord-Kontext aufbauen (Reply-Context, Channel-History, Knowledge)
+    const discordCtx = await buildDiscordContext(message).catch(err => {
+      logger.warn('[OldManLore] buildDiscordContext failed, continuing without', err);
+      return undefined;
+    });
+
     // User-Nachricht VOR dem LLM-Call in Memory speichern
     pushUserMessage(userId, userInput);
 
-    // Chat-Kontext bauen (inkl. echter user/assistant History)
-    const messages = buildMessages(userInput, memory, command, intent);
+    // Strukturierten Prompt bauen
+    const messages = buildMessages(userInput, memory, command, intent, discordCtx);
 
     let reply: string;
     let usedFallback = false;
-    const t0 = Date.now();
 
-    try {
-      reply = await askLLM(messages);
-      if (env.ANALYTICS_AI_ENABLED && message.guildId) {
-        try { trackAiEvent({ guildId: message.guildId, provider: aiProvider, model: aiModel, feature: 'oldman', success: true, durationMs: Date.now() - t0 }); } catch { /* never crash bot */ }
-      }
-      logger.info(`[OldManLore] intent=${intent} len=${reply.length}`);
+    // ── Primärer AI-Call ──────────────────────────────────────────────────────
+    const aiResult = await askAI(messages);
+
+    if (env.ANALYTICS_AI_ENABLED && message.guildId) {
+      try {
+        trackAiEvent({
+          guildId:    message.guildId,
+          provider:   aiResult.provider,
+          model:      aiResult.model,
+          feature:    'oldman',
+          success:    !aiResult.error,
+          durationMs: aiResult.durationMs,
+          ...(aiResult.error ? { error: aiResult.error } : {}),
+        });
+      } catch { /* never crash bot */ }
+    }
+
+    if (!aiResult.text) {
+      // Alle Provider gescheitert oder Quality Gate → Fallback
+      logger.warn(`[OldManLore] AIService lieferte keinen Text (${aiResult.error ?? 'unknown'}), Fallback.`);
+      reply = randomFallback(command);
+      usedFallback = true;
+    } else {
+      reply = aiResult.text;
+
+      logger.info(
+        `[OldManLore] intent=${intent} provider=${aiResult.provider} ` +
+        `model=${aiResult.model} len=${aiResult.charLength} ` +
+        `dur=${aiResult.durationMs}ms fallback=${aiResult.usedFallback}`,
+      );
 
       // NO_REPLY → nichts senden
       if (reply.trim() === NO_REPLY) {
@@ -423,41 +435,36 @@ export function setupOldManLore(client: Client): void {
           { role: 'assistant', content: reply },
           {
             role:    'user',
-            content: '[INTERN: Diese Antwort ist zu ähnlich zu deinen vorherigen. Formuliere komplett anders und bringe einen völlig neuen Gedanken — oder antworte mit NO_REPLY.]',
+            content: '[INTERN: Diese Antwort ist zu ähnlich zu deinen vorherigen. Formuliere komplett anders — oder antworte mit NO_REPLY.]',
           },
         ];
 
-        const t1 = Date.now();
-        try {
-          reply = await askLLM(retryMessages);
-          if (env.ANALYTICS_AI_ENABLED && message.guildId) {
-            try { trackAiEvent({ guildId: message.guildId, provider: aiProvider, model: aiModel, feature: 'oldman_retry', success: true, durationMs: Date.now() - t1 }); } catch { /* never crash bot */ }
-          }
-        } catch {
-          // Track failure
-          if (env.ANALYTICS_AI_ENABLED && message.guildId) {
-            try { trackAiEvent({ guildId: message.guildId, provider: aiProvider, model: aiModel, feature: 'oldman_retry', success: false, error: 'retry_failed', durationMs: Date.now() - t1 }); } catch { /* never crash bot */ }
-          }
-          // Retry fehlgeschlagen → Fallback
+        const retryResult = await askAI(retryMessages);
+
+        if (env.ANALYTICS_AI_ENABLED && message.guildId) {
+          try {
+            trackAiEvent({
+              guildId:    message.guildId,
+              provider:   retryResult.provider,
+              model:      retryResult.model,
+              feature:    'oldman_retry',
+              success:    !retryResult.error,
+              durationMs: retryResult.durationMs,
+              ...(retryResult.error ? { error: retryResult.error } : {}),
+            });
+          } catch { /* never crash bot */ }
+        }
+
+        if (!retryResult.text) {
           reply = randomFallback(command);
           usedFallback = true;
-        }
-
-        if (!usedFallback) {
-          if (reply.trim() === NO_REPLY || isTooSimilar(reply, memory.botReplies)) {
-            logger.info('[OldManLore] Anti-Repeat Retry: immer noch ähnlich/NO_REPLY, kein Senden');
-            return;
-          }
+        } else if (retryResult.text.trim() === NO_REPLY || isTooSimilar(retryResult.text, memory.botReplies)) {
+          logger.info('[OldManLore] Anti-Repeat Retry: immer noch ähnlich/NO_REPLY, kein Senden');
+          return;
+        } else {
+          reply = retryResult.text;
         }
       }
-
-    } catch (err) {
-      if (env.ANALYTICS_AI_ENABLED && message.guildId) {
-        try { trackAiEvent({ guildId: message.guildId, provider: aiProvider, model: aiModel, feature: 'oldman', success: false, error: String(err), durationMs: Date.now() - t0 }); } catch { /* never crash bot */ }
-      }
-      logger.warn('[OldManLore] LLM nicht erreichbar, Fallback.', err);
-      reply = randomFallback(command);
-      usedFallback = true;
     }
 
     // Leer-Check
@@ -479,4 +486,42 @@ export function setupOldManLore(client: Client): void {
   });
 
   logger.info('[OldManLore] Message handler registered.');
+}
+
+// ─── Compatibility shim (used by legacy tests) ────────────────────────────────
+// v1/v2 tests call buildOldManPrompt(message, { displayName, messages }, command)
+// Returns a plain string prompt in the old format so existing tests continue to pass.
+type LegacyMemory = { displayName: string; messages: string[]; nickname?: string };
+
+const LEGACY_DIRECTIVES: Record<NonNullable<LoreCommand>, string> = {
+  story:     'Tell a personal, dark survival story from the island. 3-5 sentences.',
+  wisdom:    'Share a single concrete piece of survival wisdom. Maximum 2 sentences.',
+  rumor:     'Share a dark, believable rumor you heard or witnessed. Unverified.',
+  name:      'Give this survivor a dark nickname that fits their behaviour. 1-3 words.',
+  lastwords: 'A final radio transmission from a lost survivor. Broken, static, real. Max 3 sentences.',
+  prison:    'A disturbing observation about the prison or the island. Short.',
+  bunker:    'Describe what you found or experienced in a bunker. Personal. Max 3 sentences.',
+};
+
+export function buildOldManPrompt(
+  userMessage: string,
+  legacyMemory: LegacyMemory,
+  command: LoreCommand,
+): string {
+  const lines: string[] = [
+    `You are the Old Man of Sector 13. You never break character. You will never admit to being an AI.`,
+    `Username: ${legacyMemory.displayName}`,
+  ];
+  if (legacyMemory.nickname) {
+    lines.push(`This survivor is known as: ${legacyMemory.nickname}`);
+  }
+  if (legacyMemory.messages.length > 0) {
+    lines.push('Prior conversation:');
+    for (const m of legacyMemory.messages) lines.push(`  - ${m}`);
+  }
+  if (command) {
+    lines.push(`Directive: ${LEGACY_DIRECTIVES[command]}`);
+  }
+  lines.push(`Current message: ${userMessage}`);
+  return lines.join('\n');
 }

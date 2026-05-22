@@ -5,6 +5,7 @@ import {
   countSearchClosedTickets, getClosedTicketById, getDb,
 } from '../../../db/index';
 import { requirePermission, PermLevel } from '../../auth/middleware';
+import { parseEnumQuery, parsePageQuery, parsePositiveIntParam, parseSearchQuery } from '../shared/request-validators';
 
 export const ticketsRouter = Router();
 
@@ -14,11 +15,11 @@ ticketsRouter.use(requirePermission(PermLevel.Moderator));
 ticketsRouter.get('/', (req, res) => {
   try {
     const guildId = req.session.user!.guildId;
-    const status  = (req.query.status as string) ?? 'all';
-    const page    = Math.max(1, parseInt(req.query.page as string) || 1);
+    const status  = parseEnumQuery(req.query.status, ['open', 'closed', 'all'] as const, 'all');
+    const page    = parsePageQuery(req.query.page, 1, 10_000);
     const limit   = 25;
     const offset  = (page - 1) * limit;
-    const search  = (req.query.search as string) ?? '';
+    const search  = parseSearchQuery(req.query.search, 120);
 
     if (status === 'open') {
       const db = getDb();
@@ -48,8 +49,8 @@ ticketsRouter.get('/', (req, res) => {
 ticketsRouter.get('/:id', (req, res) => {
   try {
     const guildId  = req.session.user!.guildId;
-    const id       = parseInt(req.params.id);
-    if (isNaN(id)) { res.status(400).json({ success: false, error: 'Invalid ID' }); return; }
+    const id       = parsePositiveIntParam(req.params.id);
+    if (!id) { res.status(400).json({ success: false, error: 'Invalid ID' }); return; }
     const ticket   = getClosedTicketById(id, guildId);
     if (!ticket)   { res.status(404).json({ success: false, error: 'Not found' }); return; }
     res.json({ success: true, data: ticket });

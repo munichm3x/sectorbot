@@ -7,12 +7,15 @@ import session from 'express-session';
 import connectSqlite3 from 'connect-sqlite3';
 import { join } from 'path';
 import { mkdirSync } from 'fs';
+import helmet from 'helmet';
 import type { Client } from 'discord.js';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import { requireAuth, rateLimit } from './auth/middleware';
+import { doubleCsrfProtection } from './auth/csrf';
 import { buildAuthRouter } from './routes/auth.routes';
 import { buildApiRouter } from './routes/api/index';
+import { buildPublicApiRouter } from './routes/public-api/index';
 
 const SQLiteStore = connectSqlite3(session);
 
@@ -26,6 +29,22 @@ export function startDashboard(client: Client): void {
   // Trust proxy (important when behind nginx/PM2 for correct req.ip)
   app.set('trust proxy', 1);
 
+  // Security headers
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc:  ["'self'"],
+        scriptSrc:   ["'self'", "'unsafe-inline'"],
+        styleSrc:    ["'self'", "'unsafe-inline'"],
+        imgSrc:      ["'self'", 'data:', 'https://cdn.discordapp.com'],
+        connectSrc:  ["'self'"],
+        fontSrc:     ["'self'"],
+        objectSrc:   ["'none'"],
+        frameSrc:    ["'none'"],
+      },
+    },
+  }));
+
   // Ensure session DB directory exists
   const DATA_DIR = join(process.cwd(), 'data');
   mkdirSync(DATA_DIR, { recursive: true });
@@ -35,6 +54,14 @@ export function startDashboard(client: Client): void {
     logger.warn('[dashboard] WARNUNG: DASHBOARD_SESSION_SECRET ist der Standard-Wert. Bitte in .env setzen!');
     if (env.NODE_ENV === 'production') {
       throw new Error('DASHBOARD_SESSION_SECRET muss in Produktion gesetzt werden.');
+    }
+  }
+
+  // Guard against missing Discord client secret
+  if (!env.DISCORD_CLIENT_SECRET) {
+    logger.warn('[dashboard] WARNUNG: DISCORD_CLIENT_SECRET ist nicht gesetzt — OAuth-Login funktioniert nicht.');
+    if (env.NODE_ENV === 'production') {
+      throw new Error('DISCORD_CLIENT_SECRET muss in Produktion gesetzt werden.');
     }
   }
 
@@ -56,8 +83,22 @@ export function startDashboard(client: Client): void {
   // Auth routes (rate-limited: 10 req/min per IP)
   app.use('/auth', rateLimit(10, 60_000), buildAuthRouter(client));
 
-  // Protected API routes
-  app.use('/api', requireAuth, buildApiRouter(client));
+  // Protected API routes — rate-limited (100/min), then auth + CSRF
+  app.use('/api', rateLimit(100, 60_000), requireAuth, doubleCsrfProtection, buildApiRouter(client));
+
+  // Public user API (must come before /public static middleware)
+  app.use('/public-api', buildPublicApiRouter(client));
+
+  // Public user static files
+  const PUBLIC_USER_DIR = join(process.cwd(), 'dashboard', 'public-user');
+  app.use('/public', express.static(PUBLIC_USER_DIR));
+
+  // SPA fallback for /public/* paths (client-side routing)
+  app.get('/public/*', (_req, res) => {
+    res.sendFile('index.html', { root: PUBLIC_USER_DIR }, (err) => {
+      if (err) res.status(404).send('Public dashboard not found.');
+    });
+  });
 
   // Static files: HTML/CSS/JS from dashboard/public/ at project root
   const PUBLIC_DIR = join(process.cwd(), 'dashboard', 'public');

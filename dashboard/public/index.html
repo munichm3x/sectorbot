@@ -9,11 +9,12 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
 <div id="app">
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <div class="logo-mark">S</div>
+      <div class="logo-mark" style="font-size:0.75rem">S13</div>
       <div>
         <div class="logo-text">SECTOR 13</div>
         <div class="logo-sub">Control Panel</div>
@@ -21,53 +22,53 @@
     </div>
 
     <nav class="sidebar-nav" id="sidebar-nav">
-      <div class="nav-section">Übersicht</div>
-      <div class="nav-item" data-page="overview">
-        <span class="nav-icon">⬡</span> Overview
-      </div>
+  <div class="nav-section">Übersicht</div>
+  <div class="nav-item" data-page="overview"><span class="nav-icon">⬡</span> Dashboard</div>
+  <div class="nav-item" data-page="analytics-hub"><span class="nav-icon">◬</span> Analytics Hub</div>
+  <div class="nav-item" data-page="public-preview"><span class="nav-icon">◈</span> Public Preview</div>
 
-      <div class="nav-section">Analytics</div>
-      <div class="nav-item" data-page="analytics-messages">
-        <span class="nav-icon">✉</span> Nachrichten
-      </div>
-      <div class="nav-item" data-page="analytics-voice">
-        <span class="nav-icon">🎙</span> Voice & Stream
-      </div>
-      <div class="nav-item" data-page="analytics-tickets">
-        <span class="nav-icon">🎫</span> Tickets
-      </div>
-      <div class="nav-item" data-page="analytics-growth">
-        <span class="nav-icon">📈</span> Wachstum
-      </div>
-      <div class="nav-item" data-page="analytics-ai">
-        <span class="nav-icon">◈</span> AI Usage
-      </div>
-      <div class="nav-item" data-page="analytics-status">
-        <span class="nav-icon">◉</span> Serverstatus
-      </div>
+  <div class="nav-section">Community</div>
+  <div class="nav-item" data-page="server-status"><span class="nav-icon">●</span> Serverstatus</div>
+  <div class="nav-item" data-page="members"><span class="nav-icon">◎</span> Mitglieder</div>
+  <div class="nav-item" data-page="analytics-messages"><span class="nav-icon">▲</span> Nachrichten</div>
+  <div class="nav-item" data-page="analytics-voice"><span class="nav-icon">◉</span> Voice</div>
+  <div class="nav-item" data-page="analytics-growth"><span class="nav-icon">↗</span> Wachstum</div>
+  <div class="nav-item" data-page="analytics-tickets"><span class="nav-icon">⬡</span> Ticket-Analytics</div>
+  <div class="nav-item" data-page="analytics-status"><span class="nav-icon">◯</span> Status-Verlauf</div>
+  <div class="nav-item" data-page="analytics-ai"><span class="nav-icon">◈</span> AI-Usage</div>
 
-      <div class="nav-section">Management</div>
-      <div class="nav-item" data-page="tickets">
-        <span class="nav-icon">📋</span> Tickets
-      </div>
-      <div class="nav-item" data-page="members">
-        <span class="nav-icon">👥</span> Mitglieder
-      </div>
-      <div class="nav-item" data-page="server-status">
-        <span class="nav-icon">⚡</span> Server Status
-      </div>
+  <div class="nav-section">Inhalte</div>
+  <div class="nav-item" data-page="admin-rules"><span class="nav-icon">⊙</span> Regelwerk</div>
+  <div class="nav-item" data-page="admin-events"><span class="nav-icon">▲</span> Events</div>
+  <div class="nav-item" data-page="admin-changelog"><span class="nav-icon">≡</span> Changelog</div>
+  <div class="nav-item" data-page="admin-announcements"><span class="nav-icon">!</span> Announcements</div>
+  <div class="nav-item" data-page="admin-faq"><span class="nav-icon">?</span> FAQ</div>
+  <div class="nav-item" data-page="admin-server-info"><span class="nav-icon">⊡</span> Server-Info</div>
+  <div class="nav-item" data-page="admin-wipe"><span class="nav-icon">◈</span> Wipe-Info</div>
 
-      <div class="nav-section">System</div>
-      <div class="nav-item" data-page="logs">
-        <span class="nav-icon">📄</span> Logs
-      </div>
-      <div class="nav-item" data-page="ai">
-        <span class="nav-icon">🤖</span> AI
-      </div>
-      <div class="nav-item" data-page="settings">
-        <span class="nav-icon">⚙</span> Einstellungen
-      </div>
-    </nav>
+  <div class="nav-section">Verwaltung</div>
+  <div class="nav-item" data-page="tickets"><span class="nav-icon">≡</span> Tickets</div>
+  <div class="nav-item" data-page="ai"><span class="nav-icon">◈</span> AI</div>
+
+  <div class="nav-section">Einstellungen</div>
+  <div class="nav-item" data-page="settings-general"><span class="nav-icon">⚙</span> Allgemein</div>
+  <div class="nav-item" data-page="settings-dashboard"><span class="nav-icon">▢</span> Dashboard</div>
+  <div class="nav-item" data-page="settings-server"><span class="nav-icon">●</span> Server</div>
+  <div class="nav-item" data-page="settings-tickets"><span class="nav-icon">≡</span> Tickets</div>
+  <div class="nav-item" data-page="settings-roles"><span class="nav-icon">◎</span> Rollen &amp; Teams</div>
+  <div class="nav-item" data-page="settings-channels"><span class="nav-icon">#</span> Channels</div>
+  <div class="nav-item" data-page="settings-ai"><span class="nav-icon">◈</span> AI</div>
+  <div class="nav-item" data-page="settings-streamer"><span class="nav-icon">►</span> Streamer</div>
+  <div class="nav-item" data-page="settings-whitelist"><span class="nav-icon">✓</span> Whitelist</div>
+  <div class="nav-item" data-page="settings-moderation"><span class="nav-icon">!</span> Moderation</div>
+  <div class="nav-item" data-page="settings-design"><span class="nav-icon">◐</span> Design</div>
+  <div class="nav-item" data-page="settings-security"><span class="nav-icon">⊕</span> Security</div>
+
+  <div class="nav-section">System</div>
+  <div class="nav-item" data-page="operations-center"><span class="nav-icon">✦</span> Operations</div>
+  <div class="nav-item" data-page="logs"><span class="nav-icon">≡</span> Logs</div>
+  <div class="nav-item" data-page="system"><span class="nav-icon">◆</span> System</div>
+</nav>
 
     <div class="sidebar-footer">
       <div class="bot-status">
@@ -80,6 +81,7 @@
   <!-- Main area -->
   <main class="main">
     <header class="topbar">
+      <button class="topbar-toggle" id="sidebar-toggle" aria-label="Navigation öffnen">☰</button>
       <div class="topbar-title" id="page-title">Overview</div>
       <div class="topbar-right">
         <div class="topbar-user">
@@ -106,6 +108,7 @@
 <!-- App scripts -->
 <script src="/js/api.js"></script>
 <script src="/js/charts.js"></script>
+<script src="/js/settings-helper.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>

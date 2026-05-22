@@ -7,7 +7,8 @@ window['page-analytics-status'] = {
       <div class="page-header"><h1>Serverstatus Analytics</h1><p>SCUM-Server-Verfügbarkeit und Spielerzahlen im Zeitverlauf.</p></div>
       <div id="ss-period"></div>
       <div id="ss-stats" class="stat-grid"></div>
-      <div class="chart-card" style="margin-top:1rem"><div class="card-title" style="margin-bottom:.75rem">Spieler online (Verlauf)</div><div style="height:250px"><canvas id="ss-players-chart"></canvas></div></div>
+      <div class="section-header" style="margin-top:1.5rem"><div class="section-title">Verlauf & Aufschlüsselung</div></div>
+      <div class="chart-card"><div class="card-header"><div class="card-title">Spieler online (Verlauf)</div></div><div style="height:250px"><canvas id="ss-players-chart"></canvas></div></div>
     `;
     const pb = periodBar(self.period, (p) => { self.period = p; self.load(); });
     document.getElementById('ss-period').replaceWith(pb); pb.id = 'ss-period';
@@ -20,8 +21,8 @@ window['page-analytics-status'] = {
       const { history, peak, uptimePct } = data;
 
       document.getElementById('ss-stats').innerHTML = `
-        <div class="stat-card"><div class="stat-label">Uptime</div><div class="stat-value">${uptimePct !== null ? uptimePct+'%' : '—'}</div><div class="stat-sub">${this.period}</div></div>
-        <div class="stat-card"><div class="stat-label">Peak Spieler</div><div class="stat-value">${peak ?? '—'}</div><div class="stat-sub">${this.period}</div></div>
+        <div class="stat-card online"><div class="stat-label">Uptime</div><div class="stat-value">${uptimePct !== null ? uptimePct+'%' : '—'}</div><div class="stat-sub">${this.period}</div></div>
+        <div class="stat-card accent"><div class="stat-label">Peak Spieler</div><div class="stat-value">${peak ?? '—'}</div><div class="stat-sub">${this.period}</div></div>
         <div class="stat-card"><div class="stat-label">Checks</div><div class="stat-value">${fmt(history.length)}</div><div class="stat-sub">Status-Abfragen</div></div>
       `;
 

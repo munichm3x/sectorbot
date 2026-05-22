@@ -12,8 +12,8 @@ window['page-settings'] = {
 
       document.getElementById('settings-content').innerHTML = `
         <!-- Server Status Settings -->
-        <div class="card" style="margin-bottom:1rem">
-          <div class="card-header"><div class="card-title">Server Status</div></div>
+        <div class="section-header"><div class="section-title">Server Status</div></div>
+        <div class="card" style="margin-bottom:1.5rem">
           <form id="form-scum">
             <div class="grid-2">
               <div class="form-group">
@@ -30,7 +30,7 @@ window['page-settings'] = {
               </div>
               <div class="form-group">
                 <label class="form-label">Aktiviert</label>
-                <select class="form-input" name="enabled">
+                <select class="filter-select" name="enabled">
                   <option value="1" ${scumStatus?.enabled ? 'selected' : ''}>Ja</option>
                   <option value="0" ${!scumStatus?.enabled ? 'selected' : ''}>Nein</option>
                 </select>
@@ -42,9 +42,9 @@ window['page-settings'] = {
         </div>
 
         <!-- Info card -->
-        <div class="card">
-          <div class="card-title" style="margin-bottom:.5rem">Weitere Einstellungen</div>
-          <p style="font-size:.82rem;color:var(--text-secondary)">
+        <div class="section-header"><div class="section-title">Weitere Einstellungen</div></div>
+        <div class="card" style="border-left:3px solid var(--accent-muted)">
+          <p style="font-size:.82rem;color:var(--text-secondary);line-height:1.6">
             Weitere Einstellungen (Ticket-System, Streamer, AI, etc.) werden über die Discord-Slash-Commands
             <code style="font-family:var(--mono);font-size:.78rem;background:var(--surface-raised);padding:.1em .3em;border-radius:3px">/setup</code> und
             <code style="font-family:var(--mono);font-size:.78rem;background:var(--surface-raised);padding:.1em .3em;border-radius:3px">/config</code>

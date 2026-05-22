@@ -12,8 +12,8 @@ window['page-logs'] = {
         <button class="tab-btn" data-tab="audit">Audit-Trail</button>
       </div>
       <div id="log-tab-live">
-        <div style="display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap">
-          <select class="form-input" style="width:auto" id="log-level-filter">
+        <div class="filter-bar">
+          <select class="filter-select" id="log-level-filter">
             <option value="">Alle Level</option>
             <option value="info">Info</option>
             <option value="warn">Warn</option>
@@ -23,12 +23,12 @@ window['page-logs'] = {
             <input type="checkbox" id="log-live-toggle" checked> Live-Stream
           </label>
         </div>
-        <div class="card" style="font-family:var(--mono);font-size:.72rem;max-height:500px;overflow-y:auto" id="log-output">
-          <div class="skeleton"></div>
+        <div class="log-wrap" id="log-output">
+          <div class="skeleton" style="height:60px;margin:1rem"></div>
         </div>
       </div>
       <div id="log-tab-audit" style="display:none">
-        <div class="card" id="audit-output"><div class="skeleton tall"></div></div>
+        <div class="table-card" id="audit-output"><div class="skeleton tall"></div></div>
       </div>
     `;
 
@@ -62,7 +62,12 @@ window['page-logs'] = {
     if (this.eventSource) return;
     this.eventSource = new EventSource('/api/logs/stream', { withCredentials: true });
     this.eventSource.onmessage = (e) => {
-      const entries = JSON.parse(e.data);
+      let entries = [];
+      try {
+        entries = JSON.parse(e.data);
+      } catch {
+        entries = [];
+      }
       if (entries.length > 0) this.appendLogs(entries);
     };
     this.eventSource.onerror = () => { this.stopStream(); };
@@ -72,12 +77,19 @@ window['page-logs'] = {
     if (this.eventSource) { this.eventSource.close(); this.eventSource = null; }
   },
 
-  renderLogs(entries) {
-    const out = document.getElementById('log-output');
-    if (!out) return;
-    out.innerHTML = entries.length === 0 ? emptyState('Keine Logs.') :
-      entries.map(e => this.logLine(e)).join('');
-    out.scrollTop = out.scrollHeight;
+  renderLogs(logs) {
+    const el = document.getElementById('log-output');
+    if (!el) return;
+    if (!logs || logs.length === 0) { el.innerHTML = emptyState('Keine Log-Einträge vorhanden.'); return; }
+    el.innerHTML = logs.map(l => `
+      <div class="log-entry">
+        <span class="log-ts">${escapeHtml(l.ts ?? l.timestamp ?? '—')}</span>
+        <span class="log-level ${escapeHtml((l.level ?? 'info').toLowerCase())}">${escapeHtml((l.level ?? 'INFO').toUpperCase())}</span>
+        <span class="log-src">${escapeHtml(l.source ?? '')}</span>
+        <span class="log-msg">${escapeHtml(l.message ?? '')}</span>
+      </div>
+    `).join('');
+    el.scrollTop = el.scrollHeight;
   },
 
   appendLogs(entries) {
@@ -85,19 +97,21 @@ window['page-logs'] = {
     const filter = document.getElementById('log-level-filter')?.value ?? '';
     if (!out) { this.stopStream(); return; }
     const filtered = filter ? entries.filter(e => e.level === filter) : entries;
-    filtered.forEach(e => {
+    filtered.forEach(l => {
       const div = document.createElement('div');
-      div.innerHTML = this.logLine(e);
+      div.innerHTML = `
+        <div class="log-entry">
+          <span class="log-ts">${escapeHtml(l.ts ?? l.timestamp ?? '—')}</span>
+          <span class="log-level ${escapeHtml((l.level ?? 'info').toLowerCase())}">${escapeHtml((l.level ?? 'INFO').toUpperCase())}</span>
+          <span class="log-src">${escapeHtml(l.source ?? '')}</span>
+          <span class="log-msg">${escapeHtml(l.message ?? '')}</span>
+        </div>
+      `;
       out.appendChild(div.firstChild);
     });
     // Keep max 500 lines in DOM
     while (out.children.length > 500) out.removeChild(out.firstChild);
     out.scrollTop = out.scrollHeight;
-  },
-
-  logLine(e) {
-    const colors = { info: 'var(--text-secondary)', warn: 'var(--warning)', error: 'var(--offline)', debug: 'var(--text-muted)' };
-    return `<div style="padding:.15rem 0;color:${colors[e.level]??'var(--text-secondary)'}"><span style="color:var(--text-muted)">${(e.ts ?? '').slice(11,19) || '--:--:--'}</span> <span style="font-weight:600">[${e.level.toUpperCase()}]</span> ${e.message.replace(/</g,'&lt;')}</div>`;
   },
 
   async loadAudit() {
@@ -106,20 +120,22 @@ window['page-logs'] = {
       const out = document.getElementById('audit-output');
       if (data.length === 0) { out.innerHTML = emptyState('Noch keine Audit-Einträge.'); return; }
       out.innerHTML = `
-        <div class="table-wrap"><table>
+        <div class="table-wrap"><table class="responsive-table">
           <thead><tr><th>Zeit</th><th>Admin</th><th>Aktion</th><th>Status</th></tr></thead>
           <tbody>${data.map(r => `
             <tr>
-              <td class="dim mono" style="font-size:.75rem">${fmtDate(r.created_at)}</td>
-              <td class="dim mono" style="font-size:.75rem">${escapeHtml(r.admin_user_id.slice(0,8))}…</td>
-              <td class="mono" style="font-size:.78rem">${escapeHtml(r.action)}</td>
-              <td><span class="badge ${r.success?'badge-online':'badge-offline'}">${r.success?'OK':'Fehler'}</span></td>
+              <td data-label="Zeit" class="dim mono" style="font-size:.75rem">${fmtDate(r.created_at)}</td>
+              <td data-label="Admin" class="dim mono" style="font-size:.75rem">${escapeHtml(r.admin_user_id.slice(0,8))}…</td>
+              <td data-label="Aktion" class="mono" style="font-size:.78rem">${escapeHtml(r.action)}</td>
+              <td data-label="Status"><span class="badge ${r.success?'badge-online':'badge-offline'}">${r.success?'OK':'Fehler'}</span></td>
             </tr>
           `).join('')}</tbody>
         </table></div>
       `;
     } catch (err) {
-      document.getElementById('audit-output').innerHTML = errorState(err.message);
+      const out = document.getElementById('audit-output');
+      out.innerHTML = `${errorState(err.message)}<div class="cta-row" style="justify-content:center;padding:0 1rem 1rem"><button class="btn btn-ghost" id="audit-retry">Erneut laden</button></div>`;
+      document.getElementById('audit-retry')?.addEventListener('click', () => this.loadAudit());
     }
   },
 };

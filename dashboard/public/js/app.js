@@ -6,19 +6,44 @@ window.AppState = { user: null };
 
 // ── Page titles ───────────────────────────────────────────────────────────────
 const PAGE_TITLES = {
-  'overview':          'Overview',
-  'analytics-messages':'Nachrichten Analytics',
-  'analytics-voice':   'Voice & Stream Analytics',
-  'analytics-tickets': 'Ticket Analytics',
-  'analytics-growth':  'Wachstum Analytics',
-  'analytics-ai':      'AI Usage Analytics',
-  'analytics-status':  'Serverstatus Analytics',
-  'tickets':           'Ticket-Verwaltung',
-  'members':           'Mitglieder',
-  'server-status':     'Server Status',
-  'logs':              'Logs',
-  'ai':                'AI',
-  'settings':          'Einstellungen',
+  // Existing entries
+  'overview':             'Dashboard',
+  'analytics-hub':        'Analytics Hub',
+  'public-preview':       'Public Preview',
+  'analytics-messages':   'Nachrichten Analytics',
+  'analytics-voice':      'Voice Analytics',
+  'analytics-tickets':    'Ticket Analytics',
+  'analytics-growth':     'Wachstum Analytics',
+  'analytics-ai':         'AI Analytics',
+  'analytics-status':     'Status Verlauf',
+  'tickets':              'Tickets',
+  'members':              'Mitglieder',
+  'server-status':        'Serverstatus',
+  'operations-center':    'Operations Center',
+  'logs':                 'Logs',
+  'ai':                   'AI',
+  // Content management
+  'admin-rules':          'Regelwerk verwalten',
+  'admin-events':         'Events verwalten',
+  'admin-changelog':      'Changelog verwalten',
+  'admin-announcements':  'Announcements verwalten',
+  'admin-faq':            'FAQ verwalten',
+  'admin-server-info':    'Server-Info',
+  'admin-wipe':           'Wipe-Info',
+  // Settings
+  'settings-general':     'Allgemeine Einstellungen',
+  'settings-dashboard':   'Dashboard-Einstellungen',
+  'settings-server':      'Server-Einstellungen',
+  'settings-tickets':     'Ticket-Einstellungen',
+  'settings-roles':       'Rollen & Teams',
+  'settings-channels':    'Channel-Konfiguration',
+  'settings-ai':          'AI-Einstellungen',
+  'settings-streamer':    'Streamer / Twitch',
+  'settings-whitelist':   'Whitelist',
+  'settings-moderation':  'Moderation',
+  'settings-design':      'Design & Branding',
+  'settings-security':    'Security',
+  'system':               'System',
 };
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -154,6 +179,33 @@ document.getElementById('sidebar-nav').addEventListener('click', (e) => {
   const item = e.target.closest('.nav-item');
   if (item?.dataset.page) navigateTo(item.dataset.page);
 });
+
+// ── Mobile sidebar toggle ─────────────────────────────────────────────────────
+(function() {
+  const toggleBtn = document.getElementById('sidebar-toggle');
+  const sidebar   = document.getElementById('sidebar');
+  const overlay   = document.getElementById('sidebar-overlay');
+  if (!toggleBtn || !sidebar) return;
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    if (overlay) overlay.classList.add('visible');
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    if (overlay) overlay.classList.remove('visible');
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+  });
+  if (overlay) overlay.addEventListener('click', closeSidebar);
+
+  // Close sidebar on nav item click (mobile)
+  document.getElementById('sidebar-nav').addEventListener('click', (e) => {
+    if (e.target.closest('.nav-item') && window.innerWidth <= 768) closeSidebar();
+  });
+})();
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {

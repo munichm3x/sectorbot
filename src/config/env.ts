@@ -32,12 +32,25 @@ export const env = {
   DATABASE_PATH:       process.env.DATABASE_PATH ?? './data/bot.db',
   NODE_ENV:            process.env.NODE_ENV ?? 'development',
 
-  // AI
+  // AI — Provider
+  AI_PROVIDER:          process.env.AI_PROVIDER          ?? 'gemini',  // gemini | groq | openrouter
+  AI_FALLBACK_PROVIDER: process.env.AI_FALLBACK_PROVIDER ?? 'groq',    // used if primary fails
+  AI_MODEL:             process.env.AI_MODEL             ?? '',        // empty = provider default
+
+  // AI — Gemini
+  GEMINI_API_KEY:      process.env.GEMINI_API_KEY ?? '',
+
+  // AI — Groq (kept for fallback / legacy)
+  GROQ_API_KEY:        process.env.GROQ_API_KEY ?? '',
+
+  // AI — OpenRouter (optional)
+  OPENROUTER_API_KEY:  process.env.OPENROUTER_API_KEY ?? '',
+
+  // AI — Ollama (local fallback)
   OLLAMA_URL:          process.env.OLLAMA_URL ?? 'http://localhost:11434/api/generate',
   OLLAMA_MODEL:        process.env.OLLAMA_MODEL ?? 'sector13-oldman',
   OLD_MAN_COOLDOWN_MS: envInt('OLD_MAN_COOLDOWN_MS', 5000),
   OLLAMA_TIMEOUT_MS:   envInt('OLLAMA_TIMEOUT_MS', 60000),
-  GROQ_API_KEY:        process.env.GROQ_API_KEY ?? '',
 
   // External
   STEAM_API_KEY:           process.env.STEAM_API_KEY ?? '',
@@ -65,4 +78,5 @@ export const env = {
   DASHBOARD_ALLOWED_USER_IDS:     envList('DASHBOARD_ALLOWED_USER_IDS'),
   DASHBOARD_ADMIN_ROLE_IDS:       envList('DASHBOARD_ADMIN_ROLE_IDS'),
   DASHBOARD_MOD_ROLE_IDS:         envList('DASHBOARD_MOD_ROLE_IDS'),
+  DASHBOARD_EDITOR_ROLE_IDS:      envList('DASHBOARD_EDITOR_ROLE_IDS'),
 } as const;

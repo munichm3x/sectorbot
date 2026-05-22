@@ -11,6 +11,7 @@ import { setupOldManLore } from './features/oldManLore';
 import { setupChangelogDashboard } from './features/changelogDashboard';
 import { setupScumStatus } from './features/scumStatus/scumStatus.updater';
 import { setupTicketAutoClose } from './features/ticketAutoClose';
+import { registerEventSyncListeners } from './features/discordSync/eventListeners';
 import { changelogButtonHandler } from './interactions/buttons/changelogButtonHandler';
 import { scumStatusSetupHandler } from './interactions/buttons/setup/scumStatusSetupHandler';
 import { changelogModalHandler } from './interactions/modals/changelogModalHandler';
@@ -41,6 +42,9 @@ import { ticketClaimCommand } from './commands/ticket-claim';
 import { oldmanChannelCommand } from './commands/oldman-channel';
 import { clearCommand } from './commands/clear';
 import { ticketArchivCommand } from './commands/ticket-archiv';
+import { syncImportCommand } from './commands/sync-import';
+import { announceCommand } from './commands/announce';
+import { wipeCommand } from './commands/wipe';
 
 // Ticket-Archiv Dashboard
 import { ticketArchivButtonHandler } from './interactions/buttons/ticketArchivHandler';
@@ -74,7 +78,8 @@ for (const cmd of [
   setupCommand, configCommand, doctorCommand,
   ticketCloseCommand, ticketAddCommand, ticketRemoveCommand,
   ticketRenameCommand, ticketClaimCommand, oldmanChannelCommand, clearCommand,
-  streamerCommand, ticketArchivCommand,
+  streamerCommand, ticketArchivCommand, syncImportCommand,
+  announceCommand, wipeCommand,
 ]) {
   commands.set(cmd.data.name, cmd);
 }
@@ -171,6 +176,7 @@ setupChangelogDashboard(client);
 setupScumStatus(client);
 setupStreamerChecker(client);
 setupTicketAutoClose(client);
+registerEventSyncListeners(client);
 
 if (env.ANALYTICS_ENABLED) {
   setupAnalyticsTracking(client);

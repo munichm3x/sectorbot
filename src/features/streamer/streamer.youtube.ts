@@ -45,7 +45,10 @@ export async function checkYouTubeStream(
       userName:     item.snippet.channelTitle,
     };
   } catch (err) {
+    // Re-throw so the per-streamer error handler in runGuildCheck catches this.
+    // Returning { isLive: false } on network failures would cause repeated
+    // offline embeds whenever the YouTube API is temporarily unreachable.
     logger.warn(`[streamer] YouTube-Fehler für ${channelId}: ${err instanceof Error ? err.message : String(err)}`);
-    return { isLive: false };
+    throw err;
   }
 }
