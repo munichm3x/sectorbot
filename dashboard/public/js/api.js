@@ -88,6 +88,11 @@ const API = {
   ticketStats:  (p) => API.get(`/analytics/tickets?period=${p}`),
   tickets:      (q) => API.get(`/tickets?${new URLSearchParams(q)}`),
   ticket:       (id) => API.get(`/tickets/${id}`),
+  ticketTranscriptUrl: (id) => `/api/tickets/${id}/transcript`,
+  ticketNotes: {
+    add:    (id, body)    => API.post(`/tickets/${id}/notes`, body),
+    delete: (id, noteId) => API.delete(`/tickets/${id}/notes/${noteId}`),
+  },
   members:      () => API.get('/members'),
   settings:     () => API.get('/settings'),
   logs:         (q) => API.get(`/logs?${new URLSearchParams(q ?? {})}`),
