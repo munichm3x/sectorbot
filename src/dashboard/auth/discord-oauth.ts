@@ -2,6 +2,7 @@
 // Discord OAuth2 helpers — no Passport.js, plain fetch calls.
 // Scopes: identify guilds guilds.members.read
 
+import { randomBytes } from 'crypto';
 import { env } from '../../config/env';
 
 const DISCORD_API = 'https://discord.com/api/v10';
@@ -76,7 +77,7 @@ export async function fetchGuildMember(accessToken: string, guildId: string): Pr
   return res.json() as Promise<DiscordGuildMember>;
 }
 
-/** Generate a random state nonce for CSRF protection. */
+/** Generate a cryptographically secure state nonce for OAuth CSRF protection. */
 export function generateState(): string {
-  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  return randomBytes(32).toString('hex');
 }

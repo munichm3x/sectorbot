@@ -57,6 +57,14 @@ export function startDashboard(client: Client): void {
     }
   }
 
+  // Guard against missing Discord client secret
+  if (!env.DISCORD_CLIENT_SECRET) {
+    logger.warn('[dashboard] WARNUNG: DISCORD_CLIENT_SECRET ist nicht gesetzt — OAuth-Login funktioniert nicht.');
+    if (env.NODE_ENV === 'production') {
+      throw new Error('DISCORD_CLIENT_SECRET muss in Produktion gesetzt werden.');
+    }
+  }
+
   // Session store backed by SQLite (separate file from bot DB)
   app.use(session({
     // connect-sqlite3 typing is imperfect — cast as never

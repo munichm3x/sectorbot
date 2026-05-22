@@ -86,9 +86,8 @@ export function buildAuthRouter(client: Client): Router {
         return;
       }
 
-      // Store user in session
-      req.session.oauthState = undefined;
-      req.session.user = {
+      // Regenerate session ID to prevent session fixation, then store user
+      const newUser = {
         userId:    discordUser.id,
         username:  discordUser.global_name ?? discordUser.username,
         avatar:    discordUser.avatar,
@@ -96,15 +95,22 @@ export function buildAuthRouter(client: Client): Router {
         isContentEditor,
         guildId:   guild.id,
       };
-
-      req.session.save((err) => {
-        if (err) {
-          logger.error('[dashboard] Session-Speicherfehler nach Auth:', err);
+      req.session.regenerate((regenErr) => {
+        if (regenErr) {
+          logger.error('[dashboard] Session-Regenerierungsfehler:', regenErr);
           res.status(500).send('Session error. Try again.');
           return;
         }
-        logger.info(`[dashboard] Login: ${discordUser.username} (Level ${permLevel})`);
-        res.redirect('/');
+        req.session.user = newUser;
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            logger.error('[dashboard] Session-Speicherfehler nach Auth:', saveErr);
+            res.status(500).send('Session error. Try again.');
+            return;
+          }
+          logger.info(`[dashboard] Login: ${discordUser.username} (Level ${effectivePerm})`);
+          res.redirect('/');
+        });
       });
     } catch (err) {
       logger.error('[dashboard] Auth-Callback-Fehler:', err);
@@ -205,23 +211,29 @@ export function buildAuthRouter(client: Client): Router {
         return;
       }
 
-      // Set public session
-      req.session.oauthState = undefined;
-      req.session.publicUser = {
+      // Regenerate session ID to prevent session fixation, then store publicUser
+      const newPublicUser = {
         userId:   discordUser.id,
         username: discordUser.global_name ?? discordUser.username,
         avatar:   discordUser.avatar,
         guildId:  guild.id,
       };
-
-      req.session.save((err) => {
-        if (err) {
-          logger.error('[public-dashboard] Session-Speicherfehler nach Auth:', err);
+      req.session.regenerate((regenErr) => {
+        if (regenErr) {
+          logger.error('[public-dashboard] Session-Regenerierungsfehler:', regenErr);
           res.status(500).send('Session error. Try again.');
           return;
         }
-        logger.info(`[public-dashboard] Public Login: ${discordUser.username}`);
-        res.redirect('/public/');
+        req.session.publicUser = newPublicUser;
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            logger.error('[public-dashboard] Session-Speicherfehler nach Auth:', saveErr);
+            res.status(500).send('Session error. Try again.');
+            return;
+          }
+          logger.info(`[public-dashboard] Public Login: ${discordUser.username}`);
+          res.redirect('/public/');
+        });
       });
     } catch (err) {
       logger.error('[public-dashboard] Public-Callback-Fehler:', err);
