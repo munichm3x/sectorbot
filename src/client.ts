@@ -40,7 +40,7 @@ client.on('interactionCreate', async (interaction) => {
         await command.execute(interaction);
       } catch (err) {
         cmdSuccess = false;
-        logger.error('Interaction-Fehler', err);
+        logger.error('[commands] Interaktion fehlgeschlagen:', err);
         if (interaction.isRepliable()) {
           await replyError(
             interaction as Parameters<typeof replyError>[0],
@@ -113,7 +113,7 @@ client.on('interactionCreate', async (interaction) => {
       return;
     }
   } catch (err) {
-    logger.error('Interaction-Fehler', err);
+    logger.error('[interactions] Unbehandelter Fehler:', err);
     if (interaction.isRepliable()) {
       await replyError(
         interaction as Parameters<typeof replyError>[0],
