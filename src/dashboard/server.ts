@@ -12,6 +12,7 @@ import type { Client } from 'discord.js';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import { requireAuth, rateLimit } from './auth/middleware';
+import { doubleCsrfProtection } from './auth/csrf';
 import { buildAuthRouter } from './routes/auth.routes';
 import { buildApiRouter } from './routes/api/index';
 import { buildPublicApiRouter } from './routes/public-api/index';
@@ -74,8 +75,8 @@ export function startDashboard(client: Client): void {
   // Auth routes (rate-limited: 10 req/min per IP)
   app.use('/auth', rateLimit(10, 60_000), buildAuthRouter(client));
 
-  // Protected API routes
-  app.use('/api', requireAuth, buildApiRouter(client));
+  // Protected API routes — requireAuth then CSRF on mutations
+  app.use('/api', requireAuth, doubleCsrfProtection, buildApiRouter(client));
 
   // Public user API (must come before /public static middleware)
   app.use('/public-api', buildPublicApiRouter(client));

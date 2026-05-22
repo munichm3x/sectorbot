@@ -1,6 +1,7 @@
 // src/dashboard/routes/api/index.ts
 import { Router } from 'express';
 import type { Client } from 'discord.js';
+import { generateToken } from '../../auth/csrf';
 import { overviewRouter } from './overview.routes';
 import { buildAnalyticsRouter } from './analytics.routes';
 import { ticketsRouter } from './tickets.routes';
@@ -25,6 +26,12 @@ export function buildApiRouter(client: Client): Router {
   router.get('/me', (req, res) => {
     const { userId, username, avatar, permLevel } = req.session.user!;
     res.json({ success: true, data: { userId, username, avatar, permLevel } });
+  });
+
+  // GET /api/csrf-token — SPA fetches this on load to get a CSRF token for mutations
+  router.get('/csrf-token', (req, res) => {
+    const token = generateToken(req, res);
+    res.json({ success: true, data: { csrfToken: token } });
   });
 
   router.use('/overview',       overviewRouter(client));
