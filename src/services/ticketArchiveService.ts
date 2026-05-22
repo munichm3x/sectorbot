@@ -1,9 +1,11 @@
 import { EmbedBuilder } from 'discord.js';
 import type { Guild } from 'discord.js';
+import { join } from 'path';
 import { SECTOR_COLORS } from '../ui/brand';
 import { getConfig } from './guildConfigService';
-import { getTicketCategoryConfigs, enrichTicketClose, setTicketArchiveInfo } from '../db/index';
+import { getTicketCategoryConfigs, enrichTicketClose, setTicketArchiveInfo, setTranscriptPath, setArchivedAt } from '../db/index';
 import { generateTicketSummary, type MessageEntry } from './ticketSummaryService';
+import { generateTranscript, type TranscriptMessage } from './ticketTranscriptService';
 import { logger } from '../utils/logger';
 import type { Ticket } from '../types';
 
@@ -17,13 +19,14 @@ import type { Ticket } from '../types';
  * Never throws: all errors are caught and logged internally.
  */
 export async function archiveTicket(
-  guild:      Guild,
-  channelId:  string,
-  ticket:     Ticket | undefined,
-  closedById: string,
+  guild:        Guild,
+  channelId:    string,
+  ticket:       Ticket | undefined,
+  closedById:   string,
+  closeReason?: string,
 ): Promise<void> {
   try {
-    await _archive(guild, channelId, ticket, closedById);
+    await _archive(guild, channelId, ticket, closedById, closeReason);
   } catch (err) {
     logger.error('[archiveTicket] Unerwarteter Fehler:', err);
   }
@@ -32,10 +35,11 @@ export async function archiveTicket(
 // ─── Internal ─────────────────────────────────────────────────────────────────
 
 async function _archive(
-  guild:      Guild,
-  channelId:  string,
-  ticket:     Ticket | undefined,
-  closedById: string,
+  guild:        Guild,
+  channelId:    string,
+  ticket:       Ticket | undefined,
+  closedById:   string,
+  closeReason?: string,
 ): Promise<void> {
   // ── 1. Fetch channel for message reading ───────────────────────────────────
   const rawChannel = await guild.channels.fetch(channelId).catch(() => null);
@@ -92,9 +96,36 @@ async function _archive(
   // ── 5. Enrich DB record ────────────────────────────────────────────────────
   if (ticket) {
     try {
-      enrichTicketClose(ticket.channel_id, closedById, messages.length, summaryText);
+      enrichTicketClose(ticket.channel_id, closedById, messages.length, summaryText, closeReason);
     } catch (err) {
       logger.error('[archiveTicket] DB-Anreicherung fehlgeschlagen:', err);
+    }
+
+    // ── 5b. Generate HTML transcript (non-critical) ────────────────────────
+    try {
+      const transcriptMessages: TranscriptMessage[] = messages.map(m => ({
+        authorId:        m.authorId,
+        authorTag:       m.authorName,
+        authorIsBot:     m.isBot,
+        authorIsSupport: !m.isBot && m.authorId !== ticket.opener_user_id,
+        content:         m.content,
+        attachments:     [],
+        timestamp:       m.timestamp,
+      }));
+
+      const guildName = guild.name;
+      const dataDir   = join(process.cwd(), 'data');
+      const relPath   = await generateTranscript(ticket, transcriptMessages, guildName, dataDir);
+      setTranscriptPath(ticket.channel_id, relPath);
+      logger.info(`[archiveTicket] Transkript gespeichert: ${relPath}`);
+    } catch (err) {
+      logger.warn('[archiveTicket] Transkript-Generierung fehlgeschlagen (non-critical):', err);
+    }
+
+    try {
+      setArchivedAt(ticket.channel_id, Math.floor(Date.now() / 1000));
+    } catch (err) {
+      logger.warn('[archiveTicket] setArchivedAt fehlgeschlagen:', err);
     }
   }
 
