@@ -37,6 +37,10 @@ export const env = {
   AI_FALLBACK_PROVIDER: process.env.AI_FALLBACK_PROVIDER ?? 'groq',    // used if primary fails
   AI_MODEL:             process.env.AI_MODEL             ?? '',        // empty = provider default
 
+  // AI — Per-task config
+  AI_TICKET_ENABLED:    envBool('AI_TICKET_ENABLED',  true),
+  AI_TICKET_PROVIDER:   process.env.AI_TICKET_PROVIDER   ?? '',
+
   // AI — Gemini
   GEMINI_API_KEY:      process.env.GEMINI_API_KEY ?? '',
 
