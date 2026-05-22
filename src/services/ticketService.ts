@@ -4,21 +4,25 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  EmbedBuilder,
   type Guild,
   type GuildMember,
 } from 'discord.js';
 import { getConfig, getSupportRoles, getTicketCategories } from './guildConfigService';
-import { createTicketWelcomeEmbed } from './embedService';
 import { logEvent } from './logService';
 import {
   createTicket as dbCreateTicket,
   findTicketByChannel,
   closeTicket as dbCloseTicket,
   claimTicket as dbClaimTicket,
+  setTicketPriority as dbSetTicketPriority,
+  setTicketCloseReason,
+  setWelcomeMessageId,
 } from '../db/index';
 import { makeId, sanitizeChannelName, IDS } from '../utils/ids';
 import { logger } from '../utils/logger';
 import { archiveTicket } from './ticketArchiveService';
+import { SECTOR_COLORS } from '../ui/brand';
 import type { Ticket } from '../types';
 
 // ─── Error Classification ─────────────────────────────────────────────────────
@@ -37,6 +41,61 @@ export class TicketError extends Error {
     super(message);
     this.code = code;
     this.name = 'TicketError';
+  }
+}
+
+// ─── Embed Helpers ────────────────────────────────────────────────────────────
+
+const PRIORITY_EMOJI: Record<string, string> = {
+  low: '🟢', medium: '🟡', high: '🔴', urgent: '🚨',
+};
+
+function buildTicketWelcomeEmbed(
+  member:   GuildMember,
+  catLabel: string,
+  ticketId: number,
+  priority: string,
+): EmbedBuilder {
+  const prioEmoji = PRIORITY_EMOJI[priority] ?? '🟡';
+  const prioLabel = priority.charAt(0).toUpperCase() + priority.slice(1);
+  return new EmbedBuilder()
+    .setColor(SECTOR_COLORS.BLOOD_RED)
+    .setTitle(`🎫 Ticket #${ticketId}`)
+    .addFields(
+      { name: 'Ersteller',  value: `<@${member.id}>`,           inline: true },
+      { name: 'Priorität',  value: `${prioEmoji} ${prioLabel}`, inline: true },
+      { name: 'Status',     value: '🟢 Offen',                  inline: true },
+      { name: 'Kategorie',  value: catLabel,                     inline: false },
+    )
+    .setFooter({ text: 'Beschreibe dein Anliegen möglichst genau. Das Support-Team meldet sich hier.' });
+}
+
+export async function updateWelcomeEmbed(guild: Guild, channelId: string): Promise<void> {
+  const ticket = findTicketByChannel(channelId);
+  if (!ticket?.welcome_message_id) return;
+
+  const channel = await guild.channels.fetch(channelId).catch(() => null);
+  if (!channel?.isTextBased() || channel.isDMBased()) return;
+
+  const priority   = ticket.priority ?? 'medium';
+  const prioEmoji  = PRIORITY_EMOJI[priority] ?? '🟡';
+  const prioLabel  = priority.charAt(0).toUpperCase() + priority.slice(1);
+  const updatedEmbed = new EmbedBuilder()
+    .setColor(SECTOR_COLORS.BLOOD_RED)
+    .setTitle(`🎫 Ticket #${ticket.id}`)
+    .addFields(
+      { name: 'Ersteller',  value: `<@${ticket.opener_user_id}>`,                                     inline: true },
+      { name: 'Priorität',  value: `${prioEmoji} ${prioLabel}`,                                        inline: true },
+      { name: 'Status',     value: ticket.claimed_by ? `📌 Übernommen von <@${ticket.claimed_by}>` : '🟢 Offen', inline: true },
+      { name: 'Kategorie',  value: ticket.category,                                                    inline: false },
+    )
+    .setFooter({ text: 'Beschreibe dein Anliegen möglichst genau. Das Support-Team meldet sich hier.' });
+
+  try {
+    const msg = await channel.messages.fetch(ticket.welcome_message_id).catch(() => null);
+    if (msg) await msg.edit({ embeds: [updatedEmbed] });
+  } catch {
+    // Non-critical — embed update failure must not prevent ticket operations
   }
 }
 
@@ -168,10 +227,10 @@ export async function openTicket(
     );
   }
 
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(makeId(IDS.TICKET_CLOSE, channel.id))
-      .setLabel('Ticket schließen')
+      .setLabel('Schließen')
       .setEmoji('🔒')
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
@@ -181,19 +240,32 @@ export async function openTicket(
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(makeId(IDS.TICKET_ADD_PROMPT, channel.id))
-      .setLabel('Benutzer hinzufügen')
+      .setLabel('Hinzufügen')
       .setEmoji('👤')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(makeId(IDS.TICKET_REMOVE_PROMPT, channel.id))
-      .setLabel('Benutzer entfernen')
+      .setLabel('Entfernen')
       .setEmoji('🚫')
       .setStyle(ButtonStyle.Secondary),
   );
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(makeId(IDS.TICKET_PRIORITY_PROMPT, channel.id))
+      .setLabel('Priorität')
+      .setEmoji('🔺')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(makeId(IDS.TICKET_NOTE_PROMPT, channel.id))
+      .setLabel('Notiz')
+      .setEmoji('📝')
+      .setStyle(ButtonStyle.Secondary),
+  );
 
-  const welcomeEmbed = createTicketWelcomeEmbed(member, catLabel, ticket.id, supportRoles);
+  const welcomeEmbed = buildTicketWelcomeEmbed(member, catLabel, ticket.id, 'medium');
   try {
-    await channel.send({ embeds: [welcomeEmbed], components: [row] });
+    const welcomeMsg = await channel.send({ embeds: [welcomeEmbed], components: [row1, row2] });
+    setWelcomeMessageId(channel.id, welcomeMsg.id);
   } catch (sendErr) {
     logger.error('Bot kann Willkommensnachricht nicht in Ticket-Channel senden — Prüfe ViewChannel/SendMessages/EmbedLinks-Overwrites für Bot-Rolle.', {
       guildId:   guild.id,
@@ -230,8 +302,15 @@ export async function openTicket(
   return { ticket, channelId: channel.id };
 }
 
-export async function closeTicket(guild: Guild, channelId: string, closedBy: GuildMember): Promise<void> {
+export async function closeTicket(
+  guild:       Guild,
+  channelId:   string,
+  closedBy:    GuildMember,
+  closeReason = 'Manuell geschlossen',
+): Promise<void> {
   const ticket = findTicketByChannel(channelId);
+
+  setTicketCloseReason(channelId, closeReason);
 
   await logEvent(guild, 'Ticket geschlossen', [
     { name: 'Kanal',           value: ticket ? `ticket-${ticket.category}` : channelId,      inline: true },
@@ -241,7 +320,7 @@ export async function closeTicket(guild: Guild, channelId: string, closedBy: Gui
 
   // Archive: read messages, generate AI summary, post card to archive channel
   // Must run BEFORE channel.delete() so messages can still be read
-  await archiveTicket(guild, channelId, ticket, closedBy.id);
+  await archiveTicket(guild, channelId, ticket, closedBy.id, closeReason);
 
   dbCloseTicket(channelId);
 
@@ -261,6 +340,8 @@ export async function claimTicket(guild: Guild, channelId: string, claimer: Guil
     { name: 'Kanal',          value: `<#${channelId}>`,   inline: true },
     { name: 'Übernommen von', value: `<@${claimer.id}>`,  inline: true },
   ]);
+
+  await updateWelcomeEmbed(guild, channelId).catch(() => void 0);
 
   return true;
 }
@@ -295,4 +376,13 @@ export async function removeUserFromTicket(
     { name: 'User',  value: `<@${targetUserId}>`, inline: true },
     { name: 'Von',   value: `<@${removedBy.id}>`, inline: true },
   ]);
+}
+
+export async function setPriority(
+  guild:     Guild,
+  channelId: string,
+  priority:  string,
+): Promise<void> {
+  dbSetTicketPriority(channelId, priority);
+  await updateWelcomeEmbed(guild, channelId);
 }

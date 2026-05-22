@@ -18,6 +18,42 @@ export interface SummaryResult {
   usedAI: boolean;
 }
 
+export interface TicketContext {
+  ticketId:     number;
+  category:     string;
+  priority:     string;
+  createdAt:    Date;
+  closedAt:     Date | null;
+  closeReason:  string | null;
+  participants: { userId: string; tag: string; isSupport: boolean }[];
+  messageCount: number;
+  messages:     MessageEntry[];
+}
+
+export function buildTicketContext(ticket: Ticket, messages: MessageEntry[]): TicketContext {
+  const participants = [
+    ...new Map(
+      messages
+        .filter(m => !m.isBot)
+        .map(m => [
+          m.authorId,
+          { userId: m.authorId, tag: m.authorName, isSupport: m.authorId !== ticket.opener_user_id },
+        ])
+    ).values(),
+  ];
+  return {
+    ticketId:     ticket.id,
+    category:     ticket.category,
+    priority:     ticket.priority ?? 'medium',
+    createdAt:    new Date(ticket.created_at * 1000),
+    closedAt:     ticket.closed_at ? new Date(ticket.closed_at * 1000) : null,
+    closeReason:  ticket.close_reason ?? null,
+    participants,
+    messageCount: messages.length,
+    messages,
+  };
+}
+
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';

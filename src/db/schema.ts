@@ -293,3 +293,16 @@ export const CREATE_SERVER_PUBLIC_INFO_TABLE = `
     updated_at            INTEGER NOT NULL
   )
 `;
+
+export const CREATE_TICKET_NOTES_TABLE = `
+  CREATE TABLE IF NOT EXISTS ticket_notes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id  INTEGER NOT NULL REFERENCES tickets(id),
+    guild_id   TEXT    NOT NULL,
+    author_id  TEXT    NOT NULL,
+    author_tag TEXT    NOT NULL,
+    content    TEXT    NOT NULL,
+    created_at INTEGER NOT NULL
+  )
+`;
+export const CREATE_TICKET_NOTES_INDEX = `CREATE INDEX IF NOT EXISTS idx_ticket_notes_ticket_id ON ticket_notes(ticket_id)`;
