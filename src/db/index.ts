@@ -17,6 +17,8 @@ import {
   CREATE_BOT_SETTINGS_TABLE, CREATE_BOT_SETTINGS_INDEX,
   CREATE_WIPE_INFO_TABLE,
   CREATE_SERVER_PUBLIC_INFO_TABLE,
+  CREATE_TICKET_NOTES_TABLE,
+  CREATE_TICKET_NOTES_INDEX,
 } from './schema';
 import {
   CREATE_SERVER_STATUS_HISTORY,
@@ -49,6 +51,15 @@ export function initDb(path: string): void {
   try { db.exec(`ALTER TABLE tickets ADD COLUMN archive_channel_id TEXT`);             } catch { /* already exists */ }
   try { db.exec(`ALTER TABLE tickets ADD COLUMN username_snapshot TEXT`);              } catch { /* already exists */ }
   try { db.exec(`ALTER TABLE tickets ADD COLUMN closed_by_username_snapshot TEXT`);    } catch { /* already exists */ }
+  // Ticket-System Verbesserungen (2026-05-22)
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN priority           TEXT    NOT NULL DEFAULT 'medium'`); } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN close_reason       TEXT`);                              } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN tags               TEXT`);                              } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN transcript_path    TEXT`);                              } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN archived_at        INTEGER`);                           } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN welcome_message_id TEXT`);                              } catch { /* already exists */ }
+  db.exec(CREATE_TICKET_NOTES_TABLE);
+  db.exec(CREATE_TICKET_NOTES_INDEX);
   db.exec(CREATE_PANELS_TABLE);
   db.exec(CREATE_GUILD_CONFIG_TABLE);
   try { db.exec(`ALTER TABLE guild_config ADD COLUMN ticket_archive_channel_id TEXT`); } catch { /* already exists */ }
