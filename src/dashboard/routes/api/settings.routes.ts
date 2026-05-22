@@ -8,6 +8,8 @@ import {
   getScumStatusConfig, upsertScumStatusConfig,
   getChangelogConfig,
 } from '../../../db/index';
+import { z } from 'zod';
+import { DiscordSnowflake, NullableSnowflake, zodError } from '../shared/schemas';
 
 const MASK = '••••••••';
 
@@ -15,6 +17,23 @@ function maskField(value: string | null | undefined): string {
   if (!value) return '';
   return MASK;
 }
+
+const GuildSettingsPatchSchema = z.object({
+  ticket_panel_channel_id:   NullableSnowflake,
+  ticket_category_id:        NullableSnowflake,
+  ticket_log_channel_id:     NullableSnowflake,
+  ticket_archive_channel_id: NullableSnowflake,
+  rules_channel_id:          NullableSnowflake,
+  whitelist_role_id:         NullableSnowflake,
+}).strict();
+
+const ScumSettingsPatchSchema = z.object({
+  channel_id:           NullableSnowflake,
+  host:                 z.string().max(253).nullable().optional(),
+  query_port:           z.number().int().min(1).max(65535).nullable().optional(),
+  update_interval_secs: z.number().int().min(5).max(3600).nullable().optional(),
+  enabled:              z.union([z.boolean(), z.literal(0), z.literal(1)]).optional(),
+}).strict();
 
 export const settingsRouter = Router();
 settingsRouter.use(requirePermission(PermLevel.Admin));
@@ -39,14 +58,11 @@ settingsRouter.patch('/guild', (req, res) => {
   try {
     const guildId = req.session.user!.guildId;
     const user    = req.session.user!;
-    const body    = req.body as Record<string, unknown>;
-    const allowed = ['ticket_panel_channel_id','ticket_category_id','ticket_log_channel_id','ticket_archive_channel_id','rules_channel_id','whitelist_role_id'];
-    const patch: Record<string, string | null> = {};
-    for (const key of allowed) {
-      if (key in body) patch[key] = typeof body[key] === 'string' ? body[key] as string : null;
-    }
+    const parsed  = GuildSettingsPatchSchema.safeParse(req.body);
+    if (!parsed.success) { zodError(res, parsed.error); return; }
+    const patch = parsed.data as Parameters<typeof upsertGuildConfig>[1];
     const old = getGuildConfig(guildId);
-    upsertGuildConfig(guildId, patch as Parameters<typeof upsertGuildConfig>[1]);
+    upsertGuildConfig(guildId, patch);
     insertAuditLog({ guildId, adminUserId: user.userId, action: 'settings.guild.update', oldValue: old, newValue: { ...old, ...patch }, success: true, ipAddress: req.ip });
     res.json({ success: true });
   } catch (err) {
@@ -59,29 +75,13 @@ settingsRouter.patch('/scum', (req, res) => {
   try {
     const guildId = req.session.user!.guildId;
     const user    = req.session.user!;
-    const body    = req.body as Record<string, unknown>;
-
-    // Non-secret fields with type validation
-    const patch: Record<string, unknown> = {};
-
-    if ('channel_id' in body) {
-      patch.channel_id = typeof body.channel_id === 'string' ? body.channel_id : null;
+    const parsed  = ScumSettingsPatchSchema.safeParse(req.body);
+    if (!parsed.success) { zodError(res, parsed.error); return; }
+    const { enabled, ...rest } = parsed.data;
+    const patch: Record<string, unknown> = { ...rest };
+    if (enabled !== undefined) {
+      patch.enabled = (enabled === true || enabled === 1) ? 1 : 0;
     }
-    if ('host' in body) {
-      patch.host = typeof body.host === 'string' ? body.host : null;
-    }
-    if ('query_port' in body) {
-      const port = parseInt(String(body.query_port), 10);
-      patch.query_port = isNaN(port) || port < 1 || port > 65535 ? null : port;
-    }
-    if ('update_interval_secs' in body) {
-      const secs = parseInt(String(body.update_interval_secs), 10);
-      patch.update_interval_secs = isNaN(secs) || secs < 1 ? null : secs;
-    }
-    if ('enabled' in body) {
-      patch.enabled = body.enabled === true || body.enabled === 1 || body.enabled === 'true' ? 1 : 0;
-    }
-
     const old = getScumStatusConfig(guildId);
     upsertScumStatusConfig(guildId, patch as Parameters<typeof upsertScumStatusConfig>[1]);
     insertAuditLog({ guildId, adminUserId: user.userId, action: 'settings.scum.update', oldValue: old, newValue: { ...old, ...patch }, success: true, ipAddress: req.ip });
