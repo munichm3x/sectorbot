@@ -31,6 +31,7 @@ export interface Ticket {
   // Ticket-System Verbesserungen (migration columns — null on older records)
   priority?:           string | null;
   close_reason?:       string | null;
+  summary_json?:       string | null;
   tags?:               string | null;
   transcript_path?:    string | null;
   archived_at?:        number | null;
