@@ -84,11 +84,13 @@ async function _archive(
   // ── 4. Generate summary ────────────────────────────────────────────────────
   let summaryText = 'Zusammenfassung konnte nicht erstellt werden.';
   let usedAI      = false;
+  let summaryJson: string | null = null;
 
   try {
     const result = await generateTicketSummary(ticket, messages, categoryLabel);
     summaryText  = result.text;
     usedAI       = result.usedAI;
+    summaryJson  = result.summaryJson;
   } catch (err) {
     logger.error('[archiveTicket] Zusammenfassungsfehler:', err);
   }
@@ -96,7 +98,7 @@ async function _archive(
   // ── 5. Enrich DB record ────────────────────────────────────────────────────
   if (ticket) {
     try {
-      enrichTicketClose(ticket.channel_id, closedById, messages.length, summaryText, closeReason);
+      enrichTicketClose(ticket.channel_id, closedById, messages.length, summaryText, closeReason, summaryJson);
     } catch (err) {
       logger.error('[archiveTicket] DB-Anreicherung fehlgeschlagen:', err);
     }
@@ -165,6 +167,7 @@ async function _archive(
     attachmentCount,
     hasLinks,
     staffIds,
+    summaryJson,
   });
 
   // ── 8. Fetch username snapshots (best-effort) ──────────────────────────────
@@ -218,17 +221,13 @@ interface CardParams {
   attachmentCount: number;
   hasLinks:       boolean;
   staffIds:       string[];
+  summaryJson?:   string | null;
 }
 
 function buildArchiveCard(p: CardParams): EmbedBuilder {
   const now       = Math.floor(Date.now() / 1000);
   const openedAt  = p.ticket?.created_at ?? now;
   const durationS = now - openedAt;
-
-  // Clamp per-field to Discord's 1024-char limit
-  const summary = p.summaryText.length > 1020
-    ? p.summaryText.slice(0, 1020) + '…'
-    : p.summaryText;
 
   const embed = new EmbedBuilder()
     .setColor(SECTOR_COLORS.BLOOD_RED)
@@ -306,10 +305,28 @@ function buildArchiveCard(p: CardParams): EmbedBuilder {
     embed.addFields({ name: '🔎 Hinweise', value: hints.join(' · '), inline: false });
   }
 
-  // Summary block — most important, always last before footer
+  // Summary block — use short_summary from JSON if available
+  let displaySummary = p.summaryText.length > 1020
+    ? p.summaryText.slice(0, 1020) + '…'
+    : p.summaryText;
+  let summaryLabel = p.usedAI ? '🧾 Zusammenfassung *(KI)*' : '🧾 Zusammenfassung';
+
+  if (p.summaryJson) {
+    try {
+      const parsed = JSON.parse(p.summaryJson) as { short_summary?: string; needs_followup?: boolean };
+      if (parsed.short_summary) {
+        displaySummary = parsed.short_summary.slice(0, 1020);
+        summaryLabel   = '🧾 Kurzbeschreibung *(KI-Analyse)*';
+        if (parsed.needs_followup) {
+          displaySummary += '\n⚠️ *Nachverfolgung empfohlen*';
+        }
+      }
+    } catch { /* fall through to plain text */ }
+  }
+
   embed.addFields({
-    name:   p.usedAI ? '🧾 Zusammenfassung *(KI)*' : '🧾 Zusammenfassung',
-    value:  summary || '—',
+    name:   summaryLabel,
+    value:  displaySummary || '—',
     inline: false,
   });
 
