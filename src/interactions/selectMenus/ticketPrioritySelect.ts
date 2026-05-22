@@ -49,8 +49,11 @@ export const ticketPrioritySelectHandler: SelectMenuHandler = {
       return replyError(interaction, 'Keine Berechtigung.');
     }
 
+    const ALLOWED_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
     const priority = interaction.values[0];
-    if (!priority) return replyError(interaction, 'Keine Priorität ausgewählt.');
+    if (!priority || !ALLOWED_PRIORITIES.includes(priority as typeof ALLOWED_PRIORITIES[number])) {
+      return replyError(interaction, 'Ungültige Priorität.');
+    }
 
     await setPriority(interaction.guild, channelId, priority);
     await interaction.update({ content: `✅ Priorität auf **${priority}** gesetzt.`, components: [] });

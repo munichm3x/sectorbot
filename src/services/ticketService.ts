@@ -320,8 +320,7 @@ export async function closeTicket(
 
   // Archive: read messages, generate AI summary, post card to archive channel
   // Must run BEFORE channel.delete() so messages can still be read
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (archiveTicket as any)(guild, channelId, ticket, closedBy.id, closeReason);
+  await archiveTicket(guild, channelId, ticket, closedBy.id, closeReason);
 
   dbCloseTicket(channelId);
 

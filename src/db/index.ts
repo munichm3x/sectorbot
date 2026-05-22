@@ -293,6 +293,10 @@ export interface TicketFilters {
   search?:    string;
 }
 
+function escapeLike(s: string): string {
+  return s.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+}
+
 function buildTicketFilterQuery(
   guildId: string,
   filters: TicketFilters,
@@ -330,14 +334,14 @@ function buildTicketFilterQuery(
     params.push(filters.dateTo);
   }
   if (filters.tags) {
-    conditions.push('tags LIKE ?');
-    params.push(`%${filters.tags}%`);
+    conditions.push("tags LIKE ? ESCAPE '\\\\'");
+    params.push(`%${escapeLike(filters.tags)}%`);
   }
   if (filters.search) {
-    const like = `%${filters.search}%`;
+    const like = `%${escapeLike(filters.search)}%`;
     conditions.push(
-      '(CAST(id AS TEXT) LIKE ? OR opener_user_id LIKE ? OR closed_by LIKE ? OR ' +
-      'category LIKE ? OR summary LIKE ? OR username_snapshot LIKE ? OR closed_by_username_snapshot LIKE ?)'
+      "(CAST(id AS TEXT) LIKE ? ESCAPE '\\\\' OR opener_user_id LIKE ? ESCAPE '\\\\' OR closed_by LIKE ? ESCAPE '\\\\' OR " +
+      "category LIKE ? ESCAPE '\\\\' OR summary LIKE ? ESCAPE '\\\\' OR username_snapshot LIKE ? ESCAPE '\\\\' OR closed_by_username_snapshot LIKE ? ESCAPE '\\\\')"
     );
     params.push(like, like, like, like, like, like, like);
   }

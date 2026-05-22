@@ -87,6 +87,10 @@ ticketsRouter.get('/:id/transcript', (req, res) => {
       return;
     }
 
+    if (!ticket.transcript_path.match(/^transcripts\/[^/]+\/\d+\.html$/)) {
+      res.status(400).json({ success: false, error: 'Invalid transcript path' });
+      return;
+    }
     const absPath = join(process.cwd(), 'data', ticket.transcript_path);
     if (!existsSync(absPath)) {
       res.status(404).json({ success: false, error: 'Transcript file missing' });
