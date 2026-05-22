@@ -225,18 +225,182 @@ export function upsertGuildConfig(
 }
 
 export function enrichTicketClose(
-  channelId: string,
-  closedBy: string,
+  channelId:    string,
+  closedBy:     string,
   messageCount: number,
-  summary: string,
+  summary:      string,
+  closeReason?: string,
 ): void {
   getDb()
     .prepare(`
       UPDATE tickets
-      SET closed_by = ?, message_count = ?, summary = ?
+      SET closed_by = ?, message_count = ?, summary = ?,
+          close_reason = COALESCE(?, close_reason)
       WHERE channel_id = ?
     `)
-    .run(closedBy, messageCount, summary.slice(0, 2000), channelId);
+    .run(closedBy, messageCount, summary.slice(0, 2000), closeReason ?? null, channelId);
+}
+
+// ─── Ticket — neue Felder ─────────────────────────────────────────────────────
+
+export function setTicketPriority(channelId: string, priority: string): void {
+  getDb()
+    .prepare(`UPDATE tickets SET priority = ? WHERE channel_id = ?`)
+    .run(priority, channelId);
+}
+
+export function setTicketCloseReason(channelId: string, reason: string): void {
+  getDb()
+    .prepare(`UPDATE tickets SET close_reason = ? WHERE channel_id = ?`)
+    .run(reason, channelId);
+}
+
+export function setTicketTags(channelId: string, tags: string): void {
+  getDb()
+    .prepare(`UPDATE tickets SET tags = ? WHERE channel_id = ?`)
+    .run(tags, channelId);
+}
+
+export function setTranscriptPath(channelId: string, transcriptPath: string): void {
+  getDb()
+    .prepare(`UPDATE tickets SET transcript_path = ? WHERE channel_id = ?`)
+    .run(transcriptPath, channelId);
+}
+
+export function setArchivedAt(channelId: string, timestamp: number): void {
+  getDb()
+    .prepare(`UPDATE tickets SET archived_at = ? WHERE channel_id = ?`)
+    .run(timestamp, channelId);
+}
+
+export function setWelcomeMessageId(channelId: string, messageId: string): void {
+  getDb()
+    .prepare(`UPDATE tickets SET welcome_message_id = ? WHERE channel_id = ?`)
+    .run(messageId, channelId);
+}
+
+// ─── Ticket — erweiterte Abfragen ─────────────────────────────────────────────
+
+export interface TicketFilters {
+  status?:    string;
+  priority?:  string;
+  category?:  string;
+  claimedBy?: string;
+  creator?:   string;
+  dateFrom?:  number;
+  dateTo?:    number;
+  tags?:      string;
+  search?:    string;
+}
+
+function buildTicketFilterQuery(
+  guildId: string,
+  filters: TicketFilters,
+  count = false,
+): { sql: string; params: unknown[] } {
+  const conditions: string[] = ['guild_id = ?'];
+  const params: unknown[]    = [guildId];
+
+  if (filters.status && filters.status !== 'all') {
+    conditions.push('status = ?');
+    params.push(filters.status);
+  }
+  if (filters.priority) {
+    conditions.push('priority = ?');
+    params.push(filters.priority);
+  }
+  if (filters.category) {
+    conditions.push('category = ?');
+    params.push(filters.category);
+  }
+  if (filters.claimedBy) {
+    conditions.push('claimed_by = ?');
+    params.push(filters.claimedBy);
+  }
+  if (filters.creator) {
+    conditions.push('opener_user_id = ?');
+    params.push(filters.creator);
+  }
+  if (filters.dateFrom) {
+    conditions.push('COALESCE(closed_at, created_at) >= ?');
+    params.push(filters.dateFrom);
+  }
+  if (filters.dateTo) {
+    conditions.push('COALESCE(closed_at, created_at) <= ?');
+    params.push(filters.dateTo);
+  }
+  if (filters.tags) {
+    conditions.push('tags LIKE ?');
+    params.push(`%${filters.tags}%`);
+  }
+  if (filters.search) {
+    const like = `%${filters.search}%`;
+    conditions.push(
+      '(CAST(id AS TEXT) LIKE ? OR opener_user_id LIKE ? OR closed_by LIKE ? OR ' +
+      'category LIKE ? OR summary LIKE ? OR username_snapshot LIKE ? OR closed_by_username_snapshot LIKE ?)'
+    );
+    params.push(like, like, like, like, like, like, like);
+  }
+
+  const where = conditions.join(' AND ');
+  const sql   = count
+    ? `SELECT COUNT(*) AS n FROM tickets WHERE ${where}`
+    : `SELECT * FROM tickets WHERE ${where}`;
+  return { sql, params };
+}
+
+export function getFilteredTickets(
+  guildId: string,
+  filters: TicketFilters,
+  limit:   number,
+  offset:  number,
+): Ticket[] {
+  const { sql, params } = buildTicketFilterQuery(guildId, filters);
+  return getDb()
+    .prepare(`${sql} ORDER BY COALESCE(closed_at, created_at) DESC LIMIT ? OFFSET ?`)
+    .all([...params, limit, offset]) as Ticket[];
+}
+
+export function countFilteredTickets(guildId: string, filters: TicketFilters): number {
+  const { sql, params } = buildTicketFilterQuery(guildId, filters, true);
+  const row = getDb().prepare(sql).get(params) as { n: number };
+  return row.n;
+}
+
+// ─── Ticket Notes ─────────────────────────────────────────────────────────────
+
+export interface TicketNoteRow {
+  id:         number;
+  ticket_id:  number;
+  guild_id:   string;
+  author_id:  string;
+  author_tag: string;
+  content:    string;
+  created_at: number;
+}
+
+export function createTicketNote(data: Omit<TicketNoteRow, 'id'>): TicketNoteRow {
+  const result = getDb()
+    .prepare(`
+      INSERT INTO ticket_notes (ticket_id, guild_id, author_id, author_tag, content, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `)
+    .run(data.ticket_id, data.guild_id, data.author_id, data.author_tag, data.content, data.created_at);
+  return getDb()
+    .prepare(`SELECT * FROM ticket_notes WHERE id = ?`)
+    .get(result.lastInsertRowid) as TicketNoteRow;
+}
+
+export function getTicketNotes(ticketId: number, guildId: string): TicketNoteRow[] {
+  return getDb()
+    .prepare(`SELECT * FROM ticket_notes WHERE ticket_id = ? AND guild_id = ? ORDER BY created_at ASC`)
+    .all(ticketId, guildId) as TicketNoteRow[];
+}
+
+export function deleteTicketNote(noteId: number, guildId: string): void {
+  getDb()
+    .prepare(`DELETE FROM ticket_notes WHERE id = ? AND guild_id = ?`)
+    .run(noteId, guildId);
 }
 
 export function getGuildSupportRoles(guildId: string): string[] {
