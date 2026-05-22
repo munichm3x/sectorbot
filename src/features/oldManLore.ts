@@ -11,9 +11,9 @@ import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import { getOldManChannel, claimMessage } from '../db/index';
 import { trackAiEvent } from '../analytics/analytics.db';
-import { askAI } from '../services/ai/aiService';
-import { buildDiscordContext } from '../services/ai/contextBuilder';
-import type { ChatMessage } from '../services/ai/types';
+import { askAI } from '../ai/aiClient';
+import { buildDiscordContext } from '../ai/contextBuilder';
+import type { ChatMessage } from '../ai/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -236,7 +236,7 @@ export function buildMessages(
   memory:      UserMemory,
   command:     LoreCommand,
   intent:      Intent,
-  discordCtx?: import('../services/ai/types').DiscordContext,
+  discordCtx?: import('../ai/types').DiscordContext,
 ): ChatMessage[] {
   const msgs: ChatMessage[] = [
     { role: 'system', content: buildSystemPrompt(intent, memory.botReplies) },

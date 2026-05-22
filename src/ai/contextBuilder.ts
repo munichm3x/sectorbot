@@ -14,7 +14,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Message, TextChannel } from 'discord.js';
 import type { DiscordContext, ChannelHistoryEntry } from './types';
-import { logger } from '../../utils/logger';
+import { logger } from '../utils/logger';
 
 // ─── Knowledge loading (cached at module startup) ─────────────────────────────
 

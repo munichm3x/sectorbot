@@ -1,5 +1,5 @@
 /**
- * AIService — central AI routing layer.
+ * AIClient — central AI routing layer.
  *
  * - Selects the primary provider based on AI_PROVIDER env var
  * - Falls back to AI_FALLBACK_PROVIDER on error
@@ -8,17 +8,17 @@
  * - Returns a typed AskResult (never throws)
  */
 
-import { env } from '../../config/env';
-import { logger } from '../../utils/logger';
+import { env } from '../config/env';
+import { logger } from '../utils/logger';
 import { GeminiProvider }      from './providers/geminiProvider';
 import { GroqProvider }         from './providers/groqProvider';
 import { OpenRouterProvider }   from './providers/openRouterProvider';
-import { runQualityGate }       from './qualityGate';
+import { validateAiReply }      from './validation/validateAiReply';
 import type { AIProvider, ChatMessage, AskResult } from './types';
 
 // ─── Provider factory ─────────────────────────────────────────────────────────
 
-function buildProvider(name: string, usePrimaryModel: boolean): AIProvider | null {
+export function buildProvider(name: string, usePrimaryModel: boolean): AIProvider | null {
   const modelOverride = usePrimaryModel ? (env.AI_MODEL || undefined) : undefined;
 
   switch (name.toLowerCase()) {
@@ -62,13 +62,13 @@ function ensureProviders(): void {
   fallbackProvider = buildProvider(env.AI_FALLBACK_PROVIDER ?? 'groq', false);
 
   if (primaryProvider) {
-    logger.info(`[AIService] Primary provider: ${primaryProvider.name} / ${primaryProvider.model}`);
+    logger.info(`[AIClient] Primary provider: ${primaryProvider.name} / ${primaryProvider.model}`);
   } else {
-    logger.warn(`[AIService] No primary provider configured (AI_PROVIDER=${env.AI_PROVIDER ?? 'gemini'}) — check API key`);
+    logger.warn(`[AIClient] No primary provider configured (AI_PROVIDER=${env.AI_PROVIDER ?? 'gemini'}) — check API key`);
   }
 
   if (fallbackProvider) {
-    logger.info(`[AIService] Fallback provider: ${fallbackProvider.name} / ${fallbackProvider.model}`);
+    logger.info(`[AIClient] Fallback provider: ${fallbackProvider.name} / ${fallbackProvider.model}`);
   }
 }
 
@@ -90,7 +90,7 @@ export async function askAI(messages: ChatMessage[]): Promise<AskResult> {
       const raw = await primaryProvider.ask(messages);
       return buildResult(raw, primaryProvider, t0, false, messages);
     } catch (err) {
-      logger.warn(`[AIService] Primary (${primaryProvider.name}) failed: ${String(err)}`);
+      logger.warn(`[AIClient] Primary (${primaryProvider.name}) failed: ${String(err)}`);
     }
   }
 
@@ -100,12 +100,12 @@ export async function askAI(messages: ChatMessage[]): Promise<AskResult> {
       const raw = await fallbackProvider.ask(messages);
       return buildResult(raw, fallbackProvider, t0, true, messages);
     } catch (err) {
-      logger.warn(`[AIService] Fallback (${fallbackProvider.name}) failed: ${String(err)}`);
+      logger.warn(`[AIClient] Fallback (${fallbackProvider.name}) failed: ${String(err)}`);
     }
   }
 
   // ── Both failed ────────────────────────────────────────────────────────────
-  logger.error('[AIService] All providers failed — no AI response available');
+  logger.error('[AIClient] All providers failed — no AI response available');
   return {
     text:         '',
     provider:     'none',
@@ -129,19 +129,19 @@ function buildResult(
   // Extract the current question from the last user message for the quality gate
   const lastUser = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
 
-  const qr = runQualityGate(rawText, lastUser);
+  const qr = validateAiReply(rawText, lastUser);
 
   const durationMs = Date.now() - t0;
 
   if (qr.reasons.length > 0) {
     logger.info(
-      `[AIService] QualityGate [${provider.name}/${provider.model}] ` +
+      `[AIClient] QualityGate [${provider.name}/${provider.model}] ` +
       `pass=${qr.pass} issues=[${qr.reasons.join(', ')}] ` +
       `len=${rawText.length}→${qr.text.length} dur=${durationMs}ms fallback=${usedFallback}`,
     );
   } else {
     logger.info(
-      `[AIService] [${provider.name}/${provider.model}] ` +
+      `[AIClient] [${provider.name}/${provider.model}] ` +
       `len=${qr.text.length} dur=${durationMs}ms fallback=${usedFallback}`,
     );
   }
