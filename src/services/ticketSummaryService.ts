@@ -1,17 +1,10 @@
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import type { Ticket } from '../types';
+import type { MessageEntry } from '../ai/types';
+export type { MessageEntry }; // re-export so callers (ticketArchiveService.ts) don't break
 
 // ─── Public types ──────────────────────────────────────────────────────────────
-
-export interface MessageEntry {
-  authorName:      string;
-  authorId:        string;
-  isBot:           boolean;
-  content:         string;
-  attachmentCount: number;
-  timestamp:       Date;
-}
 
 export interface SummaryResult {
   text:   string;

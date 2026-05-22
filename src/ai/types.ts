@@ -61,3 +61,28 @@ export interface ChannelHistoryEntry {
   content:    string;
   isBot:      boolean;
 }
+
+// ─── Ticket Summary JSON ──────────────────────────────────────────────────────
+
+export interface TicketSummaryJSON {
+  short_summary:  string;
+  problem:        string;
+  user_request:   string;
+  actions_taken:  string;
+  resolution:     string;
+  open_points:    string;
+  priority:       'low' | 'medium' | 'high' | 'urgent';
+  tags:           string[];
+  needs_followup: boolean;
+}
+
+// ─── Message entry (used by ticket summary prompt + service) ──────────────────
+
+export interface MessageEntry {
+  authorName:      string;
+  authorId:        string;
+  isBot:           boolean;
+  content:         string;
+  attachmentCount: number;
+  timestamp:       Date;
+}
