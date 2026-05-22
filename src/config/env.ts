@@ -48,6 +48,7 @@ export const env = {
 
   // AI — Ollama (local fallback)
   OLLAMA_URL:          process.env.OLLAMA_URL ?? 'http://localhost:11434/api/generate',
+  OLLAMA_BASE_URL:     process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434',
   OLLAMA_MODEL:        process.env.OLLAMA_MODEL ?? 'sector13-oldman',
   OLD_MAN_COOLDOWN_MS: envInt('OLD_MAN_COOLDOWN_MS', 5000),
   OLLAMA_TIMEOUT_MS:   envInt('OLLAMA_TIMEOUT_MS', 60000),

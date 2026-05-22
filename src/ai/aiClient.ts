@@ -13,6 +13,7 @@ import { logger } from '../utils/logger';
 import { GeminiProvider }      from './providers/geminiProvider';
 import { GroqProvider }         from './providers/groqProvider';
 import { OpenRouterProvider }   from './providers/openRouterProvider';
+import { OllamaProvider }       from './providers/ollamaProvider';
 import { validateAiReply }      from './validation/validateAiReply';
 import type { AIProvider, ChatMessage, AskResult } from './types';
 
@@ -41,6 +42,13 @@ export function buildProvider(name: string, usePrimaryModel: boolean): AIProvide
       return new OpenRouterProvider({
         apiKey: env.OPENROUTER_API_KEY,
         model:  modelOverride ?? 'meta-llama/llama-3-8b-instruct:free',
+      });
+
+    case 'ollama':
+      return new OllamaProvider({
+        baseUrl:   env.OLLAMA_BASE_URL,
+        model:     env.OLLAMA_MODEL,
+        timeoutMs: env.OLLAMA_TIMEOUT_MS,
       });
 
     default:
