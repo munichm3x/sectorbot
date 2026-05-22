@@ -83,8 +83,8 @@ export function startDashboard(client: Client): void {
   // Auth routes (rate-limited: 10 req/min per IP)
   app.use('/auth', rateLimit(10, 60_000), buildAuthRouter(client));
 
-  // Protected API routes — requireAuth then CSRF on mutations
-  app.use('/api', requireAuth, doubleCsrfProtection, buildApiRouter(client));
+  // Protected API routes — rate-limited (100/min), then auth + CSRF
+  app.use('/api', rateLimit(100, 60_000), requireAuth, doubleCsrfProtection, buildApiRouter(client));
 
   // Public user API (must come before /public static middleware)
   app.use('/public-api', buildPublicApiRouter(client));
