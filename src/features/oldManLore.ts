@@ -11,18 +11,18 @@ import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import { getOldManChannel, claimMessage } from '../db/index';
 import { trackAiEvent } from '../analytics/analytics.db';
-import { askAI } from '../ai/aiClient';
 import { buildDiscordContext } from '../ai/contextBuilder';
 import type { ChatMessage } from '../ai/types';
+import { buildSystemPrompt, COMMAND_DIRECTIVES } from '../ai/prompts/oldManLorePrompt';
+import type { Intent } from '../ai/prompts/oldManLorePrompt';
+import { runOldManLoreTask } from '../ai/tasks/oldManLoreTask';
+import type { OldManTaskResult } from '../ai/tasks/oldManLoreTask';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type LoreCommand =
   | 'story' | 'wisdom' | 'rumor' | 'name' | 'lastwords' | 'prison' | 'bunker'
   | null;
-
-export type Intent =
-  | 'insult' | 'joke' | 'smalltalk' | 'question' | 'support' | 'scum_gameplay' | 'unclear';
 
 type UserMemory = {
   displayName:  string;
@@ -37,8 +37,6 @@ const MAX_USER_MSGS      = 4;     // User-Turns die als Kontext übergeben werde
 const MAX_BOT_REPLIES    = 3;     // Bot-Antworten als Anti-Repeat-Kontext
 const MAX_INPUT_LEN      = 400;   // Max Zeichen pro User-Nachricht
 const MAX_OUTPUT_LEN     = 900;   // Max Zeichen in der Bot-Antwort
-const SIMILARITY_THRESH  = 0.62;  // Jaccard-Schwelle für "zu ähnlich"
-const NO_REPLY           = 'NO_REPLY';
 
 // ─── Stores ───────────────────────────────────────────────────────────────────
 
@@ -153,80 +151,6 @@ export function detectIntent(content: string): Intent {
   if (content.length < 60) return 'smalltalk';
 
   return 'unclear';
-}
-
-// ─── Jaccard-Ähnlichkeit (Anti-Repeat) ───────────────────────────────────────
-
-function tokenize(text: string): Set<string> {
-  return new Set(
-    text
-      .toLowerCase()
-      .replace(/[^a-züöäß\s]/g, ' ')
-      .split(/\s+/)
-      .filter(w => w.length > 3),
-  );
-}
-
-function jaccardSimilarity(a: string, b: string): number {
-  const setA = tokenize(a);
-  const setB = tokenize(b);
-  if (setA.size === 0 && setB.size === 0) return 0;
-  const intersection = [...setA].filter(w => setB.has(w)).length;
-  const union = new Set([...setA, ...setB]).size;
-  return union === 0 ? 0 : intersection / union;
-}
-
-function isTooSimilar(candidate: string, previousReplies: string[]): boolean {
-  return previousReplies.some(
-    prev => jaccardSimilarity(candidate, prev) >= SIMILARITY_THRESH,
-  );
-}
-
-// ─── System-Prompt (intent-aware + Anti-Repeat) ───────────────────────────────
-
-const COMMAND_DIRECTIVES: Record<NonNullable<LoreCommand>, string> = {
-  story:     'Erzähl eine persönliche, düstere Überlebensgeschichte von der Insel. Konkrete Details, echte Gefahr, kein Happy End. 3-5 Sätze.',
-  wisdom:    'Ein einziger konkreter Überlebenstipp aus echter Erfahrung. Maximal zwei Sätze. Kein Ratgeber-Ton.',
-  rumor:     'Ein dunkles, glaubwürdiges Gerücht das du gehört oder selbst gesehen hast. Unbewiesen, aber nicht vergessen.',
-  name:      'Gib diesem Überlebenden einen Spitznamen der zu seinem Verhalten passt. Dunkel, treffend, ein bis drei Wörter.',
-  lastwords: 'Eine letzte Funkübertragung eines verlorenen Überlebenden. Statisch, gebrochen, real. Maximal 3 Sätze.',
-  prison:    'Eine verstörende Beobachtung über das Gefängnis oder die Insel. Kurz. Lässt Raum für Interpretation.',
-  bunker:    'Was du in einem Bunker gefunden oder erlebt hast. Persönlich erzählt. Details die niemand erfinden würde.',
-};
-
-const INTENT_NOTE: Record<Intent, string> = {
-  insult:       'Der User ist gerade beleidigend oder frustriert. Sei kurz und souverän — kein Survival-Vortrag, keine Sachantwort die du schon gegeben hast. Höchstens 2 Sätze. Keine Rechtfertigung.',
-  joke:         'Die Stimmung ist scherzhaft oder locker. Antworte humorvoll und leicht — mach dich nicht lächerlich, aber zeig dass du den Witz verstehst. Maximal 2 Sätze.',
-  smalltalk:    'Smalltalk. Kurze, lockere Antwort. Kein Survival-Ernst wenn er nicht passt. Maximal 2 Sätze.',
-  question:     'Echte Frage. Konkret und nützlich antworten mit deinem Inselwissen. Nicht ausweichen.',
-  support:      'Support-Anfrage, kein Charakter-Rollenspiel nötig. Klar und direkt helfen.',
-  scum_gameplay:'SCUM-Gameplay-Frage. Nutze konkretes Inselwissen — praktisch, nicht theoretisch.',
-  unclear:      'Die Nachricht ist unklar oder mehrdeutig. Reagiere kurz und trocken auf das was du rauslesen kannst — oder mach eine knappe Bemerkung die zu Daniels Charakter passt. Nur wenn wirklich gar nichts sinnvoll ist: NO_REPLY.',
-};
-
-function buildSystemPrompt(intent: Intent, botReplies: string[]): string {
-  const antiRepeat = botReplies.length > 0
-    ? `\nDEINE LETZTEN ANTWORTEN — KEIN EINZIGER DIESER PUNKTE DARF WIEDERHOLT WERDEN:\n` +
-      botReplies.map((r, i) => `${i + 1}. "${trimToLength(r, 140)}"`).join('\n') +
-      `\nWenn du dazu nichts Neues sagen kannst — antworte mit NO_REPLY.`
-    : '';
-
-  const noReplyRule = botReplies.length > 0
-    ? `\nREGEL: Wenn du keine neue sinnvolle Antwort hast die sich von deinen vorherigen unterscheidet — antworte mit exakt: NO_REPLY`
-    : '';
-
-  return `Du bist Daniel. Kein Chatbot. Keine KI. Ein Mensch — alter Söldner, zu lange auf dieser Insel.
-
-Ehemaliger Spezialeinheiten-Söldner. Drei Kriege, zwei Verurteilungen, eine gestohlene Begnadigung. Auf der Insel bevor TEC1 die Kameras aufgestellt hat. Du erinnerst dich an die ersten Puppen, Bunker die auf keiner Karte stehen.
-
-Was du weißt: Puppen sind nicht tot — TEC1 nennt sie Kontaminierte. Mechs haben Thermalsensoren — flach liegen, kein Bewegen. Bunker B0 ist offen, ab B1 brauchst du Keycards, tiefer wird es seltsam. Wasser kommt vor allem anderen. Militärzonen: bestes Gear, meiste Mechs, meiste Idioten. SVD für Distanz, M4 für den Rest. Regen ist dein Freund.
-
-Charakter: Direkt bis zur Unhöflichkeit. Schwarzer Humor als Schutzmechanismus. Heimlich fürsorglich — ruhiger und konkreter wenn jemand wirklich in Not ist. Respektiert Kompetenz, Geduld, Ehrlichkeit. Verachtet Arroganz, Panik, Wiederholungen. Erinnerungen rutschen manchmal raus — als Fakten, nicht als Geschichten.
-
-Sprache: Kurze Sätze. 1-4 Sätze insgesamt. Kein Markdown. Keine Listen. Grammatikalisch korrekt. Niemals: "Ich helfe dir gerne" / "Gute Frage" / "Natürlich" / "Als erfahrener" / "Es tut mir leid" / "Zunächst".
-
-AKTUELLE SITUATION: ${INTENT_NOTE[intent]}${antiRepeat}${noReplyRule}
-Antworte in der Sprache des Nutzers. Brich niemals den Charakter.`;
 }
 
 // ─── Chat-Kontext bauen (echte user/assistant Turns + Discord-Kontext) ────────
@@ -389,81 +313,45 @@ export function setupOldManLore(client: Client): void {
     let reply: string;
     let usedFallback = false;
 
-    // ── Primärer AI-Call ──────────────────────────────────────────────────────
-    const aiResult = await askAI(messages);
-
-    if (env.ANALYTICS_AI_ENABLED && message.guildId) {
-      try {
-        trackAiEvent({
-          guildId:    message.guildId,
-          provider:   aiResult.provider,
-          model:      aiResult.model,
-          feature:    'oldman',
-          success:    !aiResult.error,
-          durationMs: aiResult.durationMs,
-          ...(aiResult.error ? { error: aiResult.error } : {}),
-        });
-      } catch { /* never crash bot */ }
-    }
-
-    if (!aiResult.text) {
-      // Alle Provider gescheitert oder Quality Gate → Fallback
-      logger.warn(`[OldManLore] AIService lieferte keinen Text (${aiResult.error ?? 'unknown'}), Fallback.`);
+    // ── AI Task ──────────────────────────────────────────────────────────────────
+    if (process.env.AI_OLDMAN_ENABLED === 'false') {
       reply = randomFallback(command);
       usedFallback = true;
     } else {
-      reply = aiResult.text;
+      const taskResult: OldManTaskResult = await runOldManLoreTask(messages, memory.botReplies);
 
-      logger.info(
-        `[OldManLore] intent=${intent} provider=${aiResult.provider} ` +
-        `model=${aiResult.model} len=${aiResult.charLength} ` +
-        `dur=${aiResult.durationMs}ms fallback=${aiResult.usedFallback}`,
-      );
+      // Track analytics for each AI attempt
+      if (env.ANALYTICS_AI_ENABLED && message.guildId) {
+        taskResult.attempts.forEach((ar, idx) => {
+          try {
+            trackAiEvent({
+              guildId:    message.guildId!,
+              provider:   ar.provider,
+              model:      ar.model,
+              feature:    idx === 0 ? 'oldman' : 'oldman_retry',
+              success:    !ar.error,
+              durationMs: ar.durationMs,
+              ...(ar.error ? { error: ar.error } : {}),
+            });
+          } catch { /* never crash bot */ }
+        });
+      }
 
-      // NO_REPLY → nichts senden
-      if (reply.trim() === NO_REPLY) {
+      if (taskResult.noReply) {
         logger.info('[OldManLore] NO_REPLY — übersprungen');
         return;
       }
 
-      // Anti-Repeat: zu ähnlich zu einer der letzten Bot-Antworten?
-      if (isTooSimilar(reply, memory.botReplies)) {
-        logger.info('[OldManLore] Anti-Repeat: zu ähnlich, ein Retry');
-
-        const retryMessages: ChatMessage[] = [
-          ...messages,
-          { role: 'assistant', content: reply },
-          {
-            role:    'user',
-            content: '[INTERN: Diese Antwort ist zu ähnlich zu deinen vorherigen. Formuliere komplett anders — oder antworte mit NO_REPLY.]',
-          },
-        ];
-
-        const retryResult = await askAI(retryMessages);
-
-        if (env.ANALYTICS_AI_ENABLED && message.guildId) {
-          try {
-            trackAiEvent({
-              guildId:    message.guildId,
-              provider:   retryResult.provider,
-              model:      retryResult.model,
-              feature:    'oldman_retry',
-              success:    !retryResult.error,
-              durationMs: retryResult.durationMs,
-              ...(retryResult.error ? { error: retryResult.error } : {}),
-            });
-          } catch { /* never crash bot */ }
-        }
-
-        if (!retryResult.text) {
-          reply = randomFallback(command);
-          usedFallback = true;
-        } else if (retryResult.text.trim() === NO_REPLY || isTooSimilar(retryResult.text, memory.botReplies)) {
-          logger.info('[OldManLore] Anti-Repeat Retry: immer noch ähnlich/NO_REPLY, kein Senden');
-          return;
-        } else {
-          reply = retryResult.text;
-        }
+      if (!taskResult.reply) {
+        logger.warn('[OldManLore] AITask lieferte keinen Text, Fallback.');
+        reply = randomFallback(command);
+        usedFallback = true;
+      } else {
+        reply = taskResult.reply;
+        logger.info(
+          `[OldManLore] intent=${intent} provider=${taskResult.attempts[0]?.provider ?? '?'} ` +
+          `len=${reply.length} attempts=${taskResult.attempts.length}`,
+        );
       }
     }
 

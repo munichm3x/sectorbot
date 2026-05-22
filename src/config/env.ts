@@ -41,6 +41,9 @@ export const env = {
   AI_TICKET_ENABLED:    envBool('AI_TICKET_ENABLED',  true),
   AI_TICKET_PROVIDER:   process.env.AI_TICKET_PROVIDER   ?? '',
 
+  AI_OLDMAN_ENABLED:    envBool('AI_OLDMAN_ENABLED',  true),
+  AI_OLDMAN_PROVIDER:   process.env.AI_OLDMAN_PROVIDER   ?? '',
+
   // AI — Gemini
   GEMINI_API_KEY:      process.env.GEMINI_API_KEY ?? '',
 
