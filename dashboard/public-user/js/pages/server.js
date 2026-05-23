@@ -9,17 +9,23 @@ window['page-server'] = {
       const current = model.current;
 
       root.innerHTML = `
-        <section class="server-hero card">
-          <div class="server-hero-main">
-            <div class="kicker">Live Status</div>
-            <h2>${current?.online ? 'Server online' : 'Server offline oder noch nicht erfasst'}</h2>
-            <div class="server-status-line">${statusBadge(current?.online)}<span>Letzter Check: ${fmtDate(current?.checkedAt)}</span></div>
+        <div class="status-strip">
+          <div class="status-strip-item">
+            ${statusBadge(current?.online)}
           </div>
-          <div class="server-hero-stats">
-            <div><span>Spieler</span><strong>${current ? `${fmt(current.playersOnline)}/${fmt(current.maxPlayers)}` : '-'}</strong></div>
-            <div><span>Ping</span><strong>${current?.ping != null ? `${current.ping} ms` : '-'}</strong></div>
+          <div class="status-strip-item">
+            <span class="status-strip-label">Spieler</span>
+            <span class="status-strip-value">${current ? `${fmt(current.playersOnline)} / ${fmt(current.maxPlayers)}` : '—'}</span>
           </div>
-        </section>
+          <div class="status-strip-item">
+            <span class="status-strip-label">Ping</span>
+            <span class="status-strip-value">${current?.ping != null ? `${escapeHtml(String(current.ping))} ms` : '—'}</span>
+          </div>
+          <div class="status-strip-item">
+            <span class="status-strip-label">Letzter Check</span>
+            <span class="status-strip-value" style="font-family:var(--sans);font-size:0.8rem">${fmtDate(current?.checkedAt)}</span>
+          </div>
+        </div>
 
         <div class="stat-grid">
           ${statCard('Uptime 24h', model.uptime24h != null ? `${model.uptime24h}%` : '-', 'Aus Statuschecks')}
