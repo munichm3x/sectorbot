@@ -31,6 +31,7 @@ export function startDashboard(client: Client): void {
 
   // Security headers
   app.use(helmet({
+    hsts: false,
     contentSecurityPolicy: {
       useDefaults: false,
       directives: {
