@@ -265,13 +265,7 @@ function compactChartOptions(history) {
       },
     },
   };
-}window['page-server'] = {
-  async render(container) {
-    container.innerHTML = pageHeader('SCUM Server', 'Serverstatus', 'Live-Status, Verlauf und wichtige Serverinformationen.') + '<div id="server-content"></div>';
-    const root = document.getElementById('server-content');
-    try {
-      const { data } = await API.server();
-      const current = data.current;
+}
       root.innerHTML = `
         <section class="server-hero card">
           <div class="server-hero-main">
