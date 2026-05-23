@@ -121,6 +121,7 @@ window.SettingsHelper = {
         `;
         el.innerHTML = html;
         this.attachEvents();
+        this._updateDirtyBanner();
       },
 
       renderField(f) {
