@@ -32,6 +32,7 @@ export function startDashboard(client: Client): void {
   // Security headers
   app.use(helmet({
     contentSecurityPolicy: {
+      useDefaults: false,
       directives: {
         defaultSrc:  ["'self'"],
         scriptSrc:   ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
