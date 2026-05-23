@@ -34,7 +34,7 @@ export function startDashboard(client: Client): void {
     contentSecurityPolicy: {
       directives: {
         defaultSrc:  ["'self'"],
-        scriptSrc:   ["'self'", "'unsafe-inline'"],
+        scriptSrc:   ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
         styleSrc:    ["'self'", "'unsafe-inline'"],
         imgSrc:      ["'self'", 'data:', 'https://cdn.discordapp.com'],
         connectSrc:  ["'self'"],
