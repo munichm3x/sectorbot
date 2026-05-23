@@ -37,6 +37,13 @@ export const env = {
   AI_FALLBACK_PROVIDER: process.env.AI_FALLBACK_PROVIDER ?? 'groq',    // used if primary fails
   AI_MODEL:             process.env.AI_MODEL             ?? '',        // empty = provider default
 
+  // AI — Per-task config
+  AI_TICKET_ENABLED:    envBool('AI_TICKET_ENABLED',  true),
+  AI_TICKET_PROVIDER:   process.env.AI_TICKET_PROVIDER   ?? '',
+
+  AI_OLDMAN_ENABLED:    envBool('AI_OLDMAN_ENABLED',  true),
+  AI_OLDMAN_PROVIDER:   process.env.AI_OLDMAN_PROVIDER   ?? '',
+
   // AI — Gemini
   GEMINI_API_KEY:      process.env.GEMINI_API_KEY ?? '',
 
@@ -48,6 +55,7 @@ export const env = {
 
   // AI — Ollama (local fallback)
   OLLAMA_URL:          process.env.OLLAMA_URL ?? 'http://localhost:11434/api/generate',
+  OLLAMA_BASE_URL:     process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434',
   OLLAMA_MODEL:        process.env.OLLAMA_MODEL ?? 'sector13-oldman',
   OLD_MAN_COOLDOWN_MS: envInt('OLD_MAN_COOLDOWN_MS', 5000),
   OLLAMA_TIMEOUT_MS:   envInt('OLLAMA_TIMEOUT_MS', 60000),

@@ -1,21 +1,17 @@
-import { env } from '../config/env';
 import { logger } from '../utils/logger';
+import { runTicketSummaryTask } from '../ai/tasks/ticketSummaryTask';
 import type { Ticket } from '../types';
+import type { TicketSummaryJSON } from '../ai/types';
+
+// Re-export MessageEntry so existing callers (ticketArchiveService.ts) don't break
+export type { MessageEntry } from '../ai/types';
 
 // ─── Public types ──────────────────────────────────────────────────────────────
 
-export interface MessageEntry {
-  authorName:      string;
-  authorId:        string;
-  isBot:           boolean;
-  content:         string;
-  attachmentCount: number;
-  timestamp:       Date;
-}
-
 export interface SummaryResult {
-  text:   string;
-  usedAI: boolean;
+  text:        string;
+  usedAI:      boolean;
+  summaryJson: string | null;
 }
 
 export interface TicketContext {
@@ -27,10 +23,13 @@ export interface TicketContext {
   closeReason:  string | null;
   participants: { userId: string; tag: string; isSupport: boolean }[];
   messageCount: number;
-  messages:     MessageEntry[];
+  messages:     import('../ai/types').MessageEntry[];
 }
 
-export function buildTicketContext(ticket: Ticket, messages: MessageEntry[]): TicketContext {
+export function buildTicketContext(
+  ticket:   Ticket,
+  messages: import('../ai/types').MessageEntry[],
+): TicketContext {
   const participants = [
     ...new Map(
       messages
@@ -54,120 +53,60 @@ export function buildTicketContext(ticket: Ticket, messages: MessageEntry[]): Ti
   };
 }
 
-// ─── Constants ─────────────────────────────────────────────────────────────────
-
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL   = 'llama-3.3-70b-versatile';
-const MAX_MESSAGES_FOR_AI = 60;
-const MSG_TRUNCATE_LEN    = 250;
-const TIMEOUT_MS          = 12_000;
-
 // ─── Main export ───────────────────────────────────────────────────────────────
 
 export async function generateTicketSummary(
   ticket:        Ticket | undefined,
-  messages:      MessageEntry[],
+  messages:      import('../ai/types').MessageEntry[],
   categoryLabel: string,
 ): Promise<SummaryResult> {
-  if (env.GROQ_API_KEY) {
-    try {
-      const text = await groqSummary(ticket, messages, categoryLabel);
-      return { text, usedAI: true };
-    } catch (err) {
-      logger.warn('[ticketSummary] Groq fehlgeschlagen — Fallback wird verwendet:', err);
+  try {
+    const json = await runTicketSummaryTask(ticket, messages, categoryLabel);
+
+    if (json) {
+      const summaryJson = JSON.stringify(json);
+      const summaryText = renderSummaryText(json);
+      return { text: summaryText, usedAI: true, summaryJson };
     }
+  } catch (err) {
+    logger.warn('[ticketSummary] runTicketSummaryTask fehlgeschlagen — Fallback wird verwendet:', err);
   }
-  return { text: fallbackSummary(messages, categoryLabel), usedAI: false };
+
+  return { text: fallbackSummary(messages, categoryLabel), usedAI: false, summaryJson: null };
 }
 
-// ─── Groq AI summary ───────────────────────────────────────────────────────────
+// ─── Text renderer (JSON → human-readable German) ─────────────────────────────
 
-async function groqSummary(
-  ticket:        Ticket | undefined,
-  messages:      MessageEntry[],
-  categoryLabel: string,
-): Promise<string> {
-  // Build conversation block — skip bot-only embed messages (empty content)
-  const relevant = messages
-    .filter(m => m.content.trim().length > 0)
-    .slice(0, MAX_MESSAGES_FOR_AI);
+function renderSummaryText(json: TicketSummaryJSON): string {
+  const lines = [
+    `Kurzbeschreibung: ${json.short_summary}`,
+    `Kernproblem: ${json.problem}`,
+    `Nutzeranfrage: ${json.user_request}`,
+    `Maßnahmen: ${json.actions_taken}`,
+    `Ergebnis: ${json.resolution}`,
+  ];
 
-  const conversation = relevant.map(m => {
-    const who     = m.isBot ? '[BOT]' : `[${m.authorName}]`;
-    const content = m.content.trim().slice(0, MSG_TRUNCATE_LEN);
-    const attach  = m.attachmentCount > 0 ? ` [📎 ${m.attachmentCount} Anhang]` : '';
-    return `${who}: ${content}${attach}`;
-  }).join('\n');
-
-  if (!conversation) {
-    throw new Error('Kein auswertbarer Inhalt für Groq');
+  if (json.open_points && json.open_points !== 'Nicht erkennbar' && json.open_points.trim()) {
+    lines.push(`Offene Punkte: ${json.open_points}`);
   }
 
-  const systemPrompt =
-    'Du bist ein internes Support-KI-System für den SCUM Survival Server "SECTOR 13".\n' +
-    'Erstelle eine kompakte, strukturierte Zusammenfassung eines abgeschlossenen Support-Tickets für das Admin-Team.\n' +
-    'Wichtig: Erfinde NIEMALS Informationen. Nutze ausschließlich Daten aus dem Ticketverlauf.\n' +
-    'Wenn etwas nicht erkennbar ist, schreibe "Nicht erkennbar" — niemals spekulieren.\n' +
-    'Antworte ausschließlich auf Deutsch. Kein Einleitungstext. Keine Grußformeln.\n\n' +
-    'Verwende exakt dieses Format:\n' +
-    'Kurzbeschreibung: [1-2 Sätze zum Anliegen]\n' +
-    'Kernproblem: [konkretes Problem oder "Nicht klar erkennbar"]\n' +
-    'Wichtige Details:\n- [max. 3 Stichpunkte — nur wenn vorhanden, sonst weglassen]\n' +
-    'Ergebnis: [getroffene Entscheidung/Lösung oder "Kein klares Ergebnis erkennbar"]\n\n' +
-    'Maximal 280 Wörter.';
-
-  const userPrompt =
-    `Ticket-ID: #${ticket?.id ?? '?'}\n` +
-    `Kategorie: ${categoryLabel}\n\n` +
-    `Verlauf:\n${conversation}`;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch(GROQ_API_URL, {
-      method:  'POST',
-      headers: {
-        'Authorization': `Bearer ${env.GROQ_API_KEY}`,
-        'Content-Type':  'application/json',
-      },
-      body: JSON.stringify({
-        model:       GROQ_MODEL,
-        messages:    [
-          { role: 'system', content: systemPrompt },
-          { role: 'user',   content: userPrompt   },
-        ],
-        max_tokens:  550,
-        temperature: 0.2,
-      }),
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
+  if (json.priority && json.priority !== 'medium') {
+    lines.push(`Priorität: ${json.priority}`);
   }
 
-  if (!response.ok) {
-    throw new Error(`Groq HTTP ${response.status}: ${await response.text().catch(() => '')}`);
-  }
-
-  const data = await response.json() as {
-    choices?: { message?: { content?: string } }[];
-  };
-
-  const text = data.choices?.[0]?.message?.content?.trim();
-  if (!text) throw new Error('Groq: leere Antwort');
-  return text;
+  return lines.join('\n');
 }
 
 // ─── Fallback summary (no AI) ──────────────────────────────────────────────────
 
-function fallbackSummary(messages: MessageEntry[], categoryLabel: string): string {
+function fallbackSummary(
+  messages:      import('../ai/types').MessageEntry[],
+  categoryLabel: string,
+): string {
   const userMsgs    = messages.filter(m => !m.isBot && m.content.trim().length > 0);
   const attachTotal = messages.reduce((n, m) => n + m.attachmentCount, 0);
   const hasLinks    = messages.some(m => /https?:\/\//.test(m.content));
 
-  // Edge cases
   if (userMsgs.length === 0) {
     return (
       'Kurzbeschreibung: Das Ticket enthielt keine Nachrichten vom Nutzer.\n' +
@@ -176,8 +115,8 @@ function fallbackSummary(messages: MessageEntry[], categoryLabel: string): strin
     );
   }
 
-  const firstMsg  = userMsgs[0]!.content.trim().slice(0, 300);
-  const shortMsg  = userMsgs.length === 1 && firstMsg.length < 15;
+  const firstMsg = userMsgs[0]!.content.trim().slice(0, 300);
+  const shortMsg = userMsgs.length === 1 && firstMsg.length < 15;
 
   if (shortMsg) {
     return (
@@ -187,7 +126,6 @@ function fallbackSummary(messages: MessageEntry[], categoryLabel: string): strin
     );
   }
 
-  // Detect SCUM-specific keywords in all user messages
   const allText = userMsgs.map(m => m.content).join(' ').toLowerCase();
   const hints: string[] = [];
 
@@ -216,10 +154,7 @@ function fallbackSummary(messages: MessageEntry[], categoryLabel: string): strin
     `Kernproblem: Nicht automatisch erkennbar (keine KI-Auswertung verfügbar).`,
   ];
 
-  if (hints.length > 0) {
-    lines.push(`Wichtige Details:\n${hints.slice(0, 5).join('\n')}`);
-  }
-
+  if (hints.length > 0) lines.push(`Wichtige Details:\n${hints.slice(0, 5).join('\n')}`);
   lines.push('Ergebnis: Kein klares Ergebnis erkennbar — manuelle Prüfung empfohlen.');
   return lines.join('\n');
 }

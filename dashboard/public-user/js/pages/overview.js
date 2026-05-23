@@ -105,6 +105,16 @@ window['page-overview'] = {
           <div class="card-header"><div class="card-title">Letzte Updates</div><button class="btn btn-ghost" onclick="navigateTo('changelog')">Changelog</button></div>
           ${changelog.length ? changelog.slice(0, 5).map(renderChangelog).join('') : emptyState('Noch keine öffentlichen Updates veröffentlicht.', 'Sobald Changelogs persistent gespeichert werden, erscheinen sie hier.')}
         </section>
+
+        ${server?.history?.length ? `
+          <div class="section-header" style="margin-top:1.5rem">
+            <div class="section-title">Spieler-Verlauf (letzte Snapshots)</div>
+          </div>
+          <section class="chart-card">
+            <div class="card-header"><div class="card-title">SCUM Server — Spieler Online</div></div>
+            <div style="height:200px"><canvas id="overview-players-chart"></canvas></div>
+          </section>
+        ` : ''}
       `;
 
       if (engagement) {
@@ -112,6 +122,28 @@ window['page-overview'] = {
       }
       if (server?.maxPlayers) {
         Charts.gauge('public-overview-gauge', server.playersOnline ?? 0, Math.max(server.maxPlayers ?? 0, 1), { color: '#3bca6e' });
+      }
+      if (server?.history?.length) {
+        const pts = server.history.slice(-60);
+        Charts.lineChart('overview-players-chart',
+          pts.map(h => {
+            const ts = h.checkedAt ?? h.checked_at ?? h.ts ?? 0;
+            const d  = new Date(ts * 1000);
+            return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+          }),
+          [{
+            label: 'Spieler',
+            data: pts.map(h => (h.online === true || h.online === 1) ? (h.playersOnline ?? h.players_online ?? h.players ?? 0) : null),
+            borderColor: '#3bca6e',
+            backgroundColor: 'rgba(59,202,110,0.08)',
+            tension: 0.2,
+            fill: true,
+            stepped: true,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            spanGaps: false,
+          }]
+        );
       }
     } catch {
       root.innerHTML = errorState();

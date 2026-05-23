@@ -54,7 +54,7 @@ export interface QualityResult {
 
 // ─── Main function ────────────────────────────────────────────────────────────
 
-export function runQualityGate(
+export function validateAiReply(
   rawText:         string,
   currentQuestion: string,
 ): QualityResult {

@@ -14,6 +14,8 @@ window['page-overview'] = {
       const { bot, serverStatus, tickets, activity, guild } = data;
 
       document.getElementById('ov-content').innerHTML = `
+        <div id="overview-health"></div>
+
         <!-- KPI Row -->
         <div class="stat-grid">
           <div class="stat-card ${bot.status === 'online' ? 'online' : 'offline'}">
@@ -124,11 +126,64 @@ window['page-overview'] = {
         </div>
       `;
 
+      // Load health cards in background (non-critical)
+      this.loadHealth();
+
       // Load Public Hub status in background
       this.loadHubStatus();
     } catch (err) {
       document.getElementById('ov-content').innerHTML = errorState(err.message);
     }
+  },
+
+  async loadHealth() {
+    const el = document.getElementById('overview-health');
+    if (!el) return;
+    try {
+      const doc = await API.system.doctor();
+      el.innerHTML = this.renderHealthSection(doc);
+    } catch {
+      el.innerHTML = '';
+    }
+  },
+
+  renderHealthSection(doc) {
+    const checks = Array.isArray(doc?.checks) ? doc.checks : [];
+    const find = (...patterns) => checks.find(c => patterns.some(p => c.key?.toLowerCase().includes(p)));
+
+    const cards = [
+      { label: 'Bot',          check: find('bot', 'discord') },
+      { label: 'SCUM Server',  check: find('scum_server', 'scum', 'server') },
+      { label: 'AI Provider',  check: find('ai', 'openai', 'groq') },
+      { label: 'Datenbank',    check: find('db', 'database') },
+    ];
+
+    const cardsHtml = cards.map(({ label, check }) => {
+      const statusClass = check?.ok === true ? 'ok' : check?.ok === false ? 'error' : 'warn';
+      const valueLabel  = check?.ok === true ? 'OK' : check?.ok === false ? 'Fehler' : 'Unbekannt';
+      const meta        = escapeHtml(String(check?.detail ?? check?.message ?? ''));
+      const diagHtml    = check?.ok === false && (check.error || check.message)
+        ? `<div class="health-card-diag">${escapeHtml(String(check.error ?? check.message))}</div>`
+        : '';
+      return `
+        <div class="health-card ${statusClass}">
+          <div class="health-card-header">
+            <span class="health-card-name">${escapeHtml(label)}</span>
+          </div>
+          <div class="health-card-value ${statusClass}">${valueLabel}</div>
+          <div class="health-card-meta">${meta}</div>
+          ${diagHtml}
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="section-header" style="margin-bottom:0.75rem">
+        <div class="section-title">Systemstatus</div>
+        <a href="#/system" style="font-size:0.75rem;color:var(--text-muted)">Details →</a>
+      </div>
+      <div class="health-grid" style="margin-bottom:1.75rem">
+        ${cardsHtml}
+      </div>`;
   },
 
   async loadHubStatus() {

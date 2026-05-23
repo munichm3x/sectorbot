@@ -30,6 +30,25 @@ window.SettingsHelper = {
       _loaded: {},        // values as loaded from server
       _meta: {},          // { key: { isSecret, updatedAt } }
 
+      _isDirty() {
+        for (const section of config.sections || []) {
+          for (const f of section.fields || []) {
+            if (f.type === 'readonly') continue;
+            const cur  = this._values[f.key];
+            const orig = this._loaded[f.key];
+            if (f.type === 'secret' && cur === '***' && orig === '***') continue;
+            if (String(cur ?? '') !== String(orig ?? '')) return true;
+          }
+        }
+        return false;
+      },
+
+      _updateDirtyBanner() {
+        const banner = document.getElementById('s-dirty-banner');
+        if (!banner) return;
+        banner.classList.toggle('visible', this._isDirty());
+      },
+
       async render(container) {
         container.innerHTML = `
           <div class="page-header">
@@ -60,7 +79,12 @@ window.SettingsHelper = {
       renderForm() {
         const self = this;
         const el = document.getElementById('settings-content');
-        let html = '';
+        let html = `
+          <div class="dirty-banner" id="s-dirty-banner">
+            <span class="dirty-dot"></span>
+            Ungespeicherte Änderungen — nicht vergessen zu speichern.
+          </div>
+        `;
         for (const section of config.sections || []) {
           html += `
             <div class="settings-section">
@@ -97,6 +121,7 @@ window.SettingsHelper = {
         `;
         el.innerHTML = html;
         this.attachEvents();
+        this._updateDirtyBanner();
       },
 
       renderField(f) {
@@ -195,11 +220,13 @@ window.SettingsHelper = {
             } else {
               self._values[key] = el.value;
             }
+            self._updateDirtyBanner();
           });
           el.addEventListener('input', () => {
             const key = el.dataset.key;
             if (el.type === 'checkbox') return;
             self._values[key] = el.value;
+            self._updateDirtyBanner();
           });
         });
         document.querySelectorAll('[data-secret-replace]').forEach(btn => {

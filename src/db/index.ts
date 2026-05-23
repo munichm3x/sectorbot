@@ -58,6 +58,7 @@ export function initDb(path: string): void {
   try { db.exec(`ALTER TABLE tickets ADD COLUMN transcript_path    TEXT`);                              } catch { /* already exists */ }
   try { db.exec(`ALTER TABLE tickets ADD COLUMN archived_at        INTEGER`);                           } catch { /* already exists */ }
   try { db.exec(`ALTER TABLE tickets ADD COLUMN welcome_message_id TEXT`);                              } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE tickets ADD COLUMN summary_json TEXT`); } catch { /* already exists */ }
   db.exec(CREATE_TICKET_NOTES_TABLE);
   db.exec(CREATE_TICKET_NOTES_INDEX);
   db.exec(CREATE_PANELS_TABLE);
@@ -230,15 +231,24 @@ export function enrichTicketClose(
   messageCount: number,
   summary:      string,
   closeReason?: string,
+  summaryJson?: string | null,
 ): void {
   getDb()
     .prepare(`
       UPDATE tickets
       SET closed_by = ?, message_count = ?, summary = ?,
-          close_reason = COALESCE(?, close_reason)
+          close_reason = COALESCE(?, close_reason),
+          summary_json = COALESCE(?, summary_json)
       WHERE channel_id = ?
     `)
-    .run(closedBy, messageCount, summary.slice(0, 2000), closeReason ?? null, channelId);
+    .run(
+      closedBy,
+      messageCount,
+      summary.slice(0, 2000),
+      closeReason ?? null,
+      summaryJson ?? null,
+      channelId,
+    );
 }
 
 // ─── Ticket — neue Felder ─────────────────────────────────────────────────────

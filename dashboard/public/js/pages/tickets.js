@@ -138,7 +138,32 @@ window['page-tickets'] = {
         <div class="modal-field"><div class="modal-field-label">Geschlossen</div><div class="modal-field-value">${t.closed_at ? fmtDate(t.closed_at) : '—'}</div></div>
         <div class="modal-field"><div class="modal-field-label">Nachrichten</div><div class="modal-field-value">${t.message_count ?? '—'}</div></div>
         <div class="modal-field"><div class="modal-field-label">Bearbeiter</div><div class="modal-field-value">${escapeHtml(t.closed_by_username_snapshot ?? '—')}</div></div>
-        ${t.summary ? `<div class="modal-field"><div class="modal-field-label">Zusammenfassung</div><div class="modal-field-value" style="background:var(--surface-raised);border-radius:6px;padding:1rem;font-size:.82rem;line-height:1.6;color:var(--text-secondary)">${escapeHtml(t.summary)}</div></div>` : ''}
+        ${(() => {
+  if (t.summary_json) {
+    try {
+      const sj = JSON.parse(t.summary_json);
+      const priorityBadge = sj.priority && sj.priority !== 'medium'
+        ? `<span style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;font-size:.72rem;font-weight:600;background:var(--accent-muted);color:var(--accent)">${escapeHtml(sj.priority)}</span>`
+        : '';
+      const tagHtml = Array.isArray(sj.tags) && sj.tags.length > 0
+        ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">${sj.tags.map(tag => `<span style="padding:2px 8px;border-radius:12px;background:var(--surface-raised);font-size:.72rem;color:var(--text-secondary)">${escapeHtml(String(tag))}</span>`).join('')}</div>`
+        : '';
+      const followupNote = sj.needs_followup
+        ? `<div style="margin-top:8px;color:var(--warning);font-size:.8rem;font-weight:600">⚠️ Nachverfolgung empfohlen</div>`
+        : '';
+      return `<div class="modal-field"><div class="modal-field-label">KI-Analyse ${priorityBadge}</div><div class="modal-field-value" style="background:var(--surface-raised);border-radius:6px;padding:1rem;font-size:.82rem;line-height:1.7;color:var(--text-secondary)">
+        <div><strong>Kurzbeschreibung:</strong> ${escapeHtml(sj.short_summary ?? '—')}</div>
+        <div style="margin-top:4px"><strong>Problem:</strong> ${escapeHtml(sj.problem ?? '—')}</div>
+        <div style="margin-top:4px"><strong>Ergebnis:</strong> ${escapeHtml(sj.resolution ?? '—')}</div>
+        ${sj.open_points && sj.open_points !== 'Nicht erkennbar' ? `<div style="margin-top:4px"><strong>Offene Punkte:</strong> ${escapeHtml(sj.open_points)}</div>` : ''}
+        ${tagHtml}${followupNote}
+      </div></div>`;
+    } catch { /* fall through to plain text */ }
+  }
+  return t.summary
+    ? `<div class="modal-field"><div class="modal-field-label">Zusammenfassung</div><div class="modal-field-value" style="background:var(--surface-raised);border-radius:6px;padding:1rem;font-size:.82rem;line-height:1.6;color:var(--text-secondary)">${escapeHtml(t.summary)}</div></div>`
+    : '';
+})()}
         ${t.has_transcript ? `<div class="modal-field"><button class="btn btn-ghost" onclick="window.open('${API.ticketTranscriptUrl(t.id)}', '_blank')">📄 Transcript öffnen</button></div>` : ''}
         <div class="modal-field" style="margin-top:12px"><div class="modal-field-label">Interne Notizen</div><div>${notesHtml}</div></div>
       `;
